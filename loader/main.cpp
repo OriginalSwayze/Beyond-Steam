@@ -11,6 +11,11 @@ static bool g_toldRestart = false;
 static std::atomic<bool> g_busy{false};
 
 constexpr UINT WM_TRAY = WM_APP + 1;
+constexpr UINT WM_SHOW_MANAGER = WM_APP + 2; // sent by a second copy started from the Start menu
+
+bool ShouldRunSetup();
+int RunSetup();
+int RunUninstall();
 enum : UINT { ID_OPEN = 50, ID_STATUS = 1, ID_RESTART, ID_FOLDER, ID_LOG, ID_AUTOSTART, ID_MILL_OFF, ID_MILL_ON, ID_QUIT, ID_NONE = 100, ID_THEME = 101 };
 
 static bool ProcessRunning(const wchar_t* name) {
@@ -67,6 +72,7 @@ static const wchar_t* StatusText() {
 	switch (g_app->GetStatus()) {
 	case Status::Connected: return L"Connected to Steam";
 	case Status::NeedsRestart: return L"Restart Steam to finish setting up";
+	case Status::MillenniumActive: return L"Millennium is running, so Beyond Steam is paused";
 	default: return L"Waiting for Steam";
 	}
 }
@@ -124,6 +130,11 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 		if (g_app->GetStatus() == Status::Connected) g_app->OpenManager(); else ShowMenu();
 		return 0;
 	}
+	if (m == WM_SHOW_MANAGER) {
+		if (g_app->GetStatus() == Status::Connected) g_app->OpenManager(); else ShowMenu();
+		return 0;
+	}
+	if (m == WM_CLOSE) { DestroyWindow(h); return 0; } // setup asks a running copy to quit
 	if (m == WM_TIMER) {
 		std::wstring tip = std::wstring(L"Beyond Steam — ") + StatusText();
 		wcsncpy_s(g_nid.szTip, tip.c_str(), _TRUNCATE);
@@ -132,6 +143,11 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 		if (g_app->GetStatus() == Status::NeedsRestart && !g_toldRestart && !g_busy) {
 			g_toldRestart = true;
 			Balloon(L"Beyond Steam", L"Restart Steam once to turn Beyond Steam on. Right-click this icon and pick Restart Steam.");
+		}
+		static bool toldMillennium = false;
+		if (g_app->GetStatus() == Status::MillenniumActive && !toldMillennium) {
+			toldMillennium = true;
+			Balloon(L"Beyond Steam is paused", L"Millennium is running in Steam. Right-click this icon and pick Turn off Millennium to use Beyond Steam.");
 		}
 		return 0;
 	}
@@ -144,8 +160,15 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 }
 
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
+	const std::wstring args = cmdLine ? cmdLine : L"";
+	if (args.find(L"--uninstall") != std::wstring::npos) return RunUninstall();
+	if (ShouldRunSetup()) return RunSetup();
+
 	HANDLE one = CreateMutexW(nullptr, TRUE, L"BeyondSteam.SingleInstance");
-	if (GetLastError() == ERROR_ALREADY_EXISTS) return 0;
+	if (GetLastError() == ERROR_ALREADY_EXISTS) { // already running: opening it again shows the manager
+		if (HWND w = FindWindowExW(HWND_MESSAGE, nullptr, L"BeyondSteamTray", nullptr)) PostMessageW(w, WM_SHOW_MANAGER, 0, 0);
+		return 0;
+	}
 
 	static App app;
 	g_app = &app;
@@ -170,6 +193,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
 	SetTimer(g_wnd, 1, 1000, nullptr);
 
 	std::thread([] { g_app->ConnectionLoop(); }).detach();
+	if (args.find(L"--welcome") != std::wstring::npos)
+		Balloon(L"Beyond Steam is ready", L"It waits here in the tray. Click this icon, or press Ctrl+Shift+B in Steam, to pick themes and redesigns.");
 
 	MSG msg;
 	while (GetMessageW(&msg, nullptr, 0, 0) > 0) {

@@ -12,16 +12,17 @@ namespace fs = std::filesystem;
 
 constexpr int kDebugPort = 8080;
 constexpr int kServerPort = 37421;
-constexpr const char* kVersion = "0.3.0";
+constexpr const char* kVersion = "0.4.0";
 
 struct ThemeInfo {
 	std::string folder, name, author, description, version, preview;
+	bool own = false; // in Beyond Steam's own themes folder (so it can be updated or removed)
 	json tags = json::array();
 	bool options = false;
 	fs::path dir;
 };
 
-enum class Status { NoSteam, NeedsRestart, Connected };
+enum class Status { NoSteam, NeedsRestart, Connected, MillenniumActive };
 
 class App {
 public:
@@ -48,6 +49,13 @@ private:
 	std::string Base() const { return "http://127.0.0.1:" + std::to_string(port); }
 	json State();
 	json ListPlugins() const;
+	json Catalog(); // {base, items, offline}
+	std::string Install(const std::string& id); // "" on success, else why not
+	void Remove(const std::string& kind, const std::string& id);
+	std::mutex catMu_;
+	json catalog_;
+	std::string catalogBase_;
+	unsigned long long catalogAt_ = 0;
 	json LoadConfig();
 	void SaveConfig(const json& cfg);
 	std::string Preview(const json& j, const fs::path& dir, const std::string& folder) const;
@@ -63,6 +71,7 @@ private:
 };
 
 void Log(const std::string& line);
+std::string Resource(int id); // files built into the .exe (see loader/res.rc)
 bool AutostartOn();
 void ShowSteamWindow();
 void SetAutostart(bool on);

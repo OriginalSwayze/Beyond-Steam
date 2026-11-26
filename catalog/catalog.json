@@ -1,0 +1,259 @@
+﻿{
+    "version":  1,
+    "updated":  "2026-11-26",
+    "items":  [
+                  {
+                      "id":  "Afterglow",
+                      "kind":  "theme",
+                      "name":  "Afterglow",
+                      "author":  "OriginalSwayze",
+                      "description":  "Synthwave night drive: a striped setting sun over a neon grid floor rushing toward you, palm silhouettes, chrome italic headlines, a VHS on-screen display with a running tape counter, the game list in a slide-out drawer, and a cassette deck dock with spinning reels.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Afterglow",
+                      "branch":  "main",
+                      "preview":  "previews/Afterglow.jpg"
+                  },
+                  {
+                      "id":  "Almanac",
+                      "kind":  "theme",
+                      "name":  "Almanac",
+                      "author":  "OriginalSwayze",
+                      "description":  "A sky that follows your real clock: dawn, noon, dusk and night tint the whole client; the sun and moon cross the window; stars, clouds, rain or seasonal snow. Laid out like a magazine page with a masthead dateline, an icon rail and vertical navigation.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Almanac",
+                      "branch":  "main",
+                      "preview":  "previews/Almanac.jpg"
+                  },
+                  {
+                      "id":  "Chitin",
+                      "kind":  "theme",
+                      "name":  "Chitin",
+                      "author":  "OriginalSwayze",
+                      "description":  "A biomechanical interface grown rather than built: bone white and charcoal with dull metal and a sickly ochre, asymmetric organic panels that slowly breathe, a rib cage down the game list, navigation as a spine of four vertebrae along the bottom, seed-pod buttons, and a heartbeat monitor in the title bar whose pulse quickens while a game runs.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Chitin",
+                      "branch":  "main",
+                      "preview":  "previews/Chitin.jpg"
+                  },
+                  {
+                      "id":  "Cipher",
+                      "kind":  "theme",
+                      "name":  "Cipher",
+                      "author":  "OriginalSwayze",
+                      "description":  "A restricted operating system in a dystopian megacity: blue-black with neon cyan, magenta and electric purple, scanlines and rare glitches, the game library as a classified database on a locked rail that slides open when you hover it, access-code navigation, a trace monitor, cinematic subject-file game pages, a comms-terminal friends list and system-alert notifications.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Cipher",
+                      "branch":  "main",
+                      "preview":  "previews/Cipher.jpg"
+                  },
+                  {
+                      "id":  "CutPaste",
+                      "kind":  "theme",
+                      "name":  "Cut \u0026 Paste",
+                      "author":  "OriginalSwayze",
+                      "description":  "A zine collage pinned to a cork board: a tilted paper sheet with tape, the game list on a spiral notebook page, colored index tabs, sticky-note dock, a ransom-note wordmark, highlighter selections, halftone covers and a cut-out PLAY! label.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/CutPaste",
+                      "branch":  "main",
+                      "preview":  "previews/CutPaste.jpg"
+                  },
+                  {
+                      "id":  "Cybercafe",
+                      "kind":  "theme",
+                      "name":  "Cybercafe",
+                      "author":  "OriginalSwayze",
+                      "description":  "It\u0027s 1999, you\u0027re in an internet cafÃ© and you\u0027ve just discovered online gaming. Steam becomes a web browser: a gradient caption bar, a silver toolbar with big Back/Forward and toolbar buttons, an address bar showing the URL of what you\u0027re viewing with a spinning globe, a SITE MAP frame of underlined game links beside a starry homepage, a status bar with a scrolling ticker and a visitor counter, a mouse sparkle trail, and a dial-up connection on boot.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Cybercafe",
+                      "branch":  "main",
+                      "preview":  "previews/Cybercafe.jpg"
+                  },
+                  {
+                      "id":  "Halcyon",
+                      "kind":  "theme",
+                      "name":  "Halcyon",
+                      "author":  "OriginalSwayze",
+                      "description":  "A calm, premium redesign of Steam. Soft layered glass with lit edges, generous radii and quiet type; a floating dock with icons and a pill that glides to where you are; spring-based motion throughout; and a window that takes on the colours of the game you are looking at.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Halcyon",
+                      "branch":  "main",
+                      "preview":  "previews/Halcyon.jpg"
+                  },
+                  {
+                      "id":  "Megacity",
+                      "kind":  "theme",
+                      "name":  "Megacity",
+                      "author":  "OriginalSwayze",
+                      "description":  "Future noir. A live megacity at night behind smoked glass: flare stacks bursting into the haze, an ad blimp sweeping searchlights through the rain, flying cars and flickering windows, beams of light sliding through the blinds across the desk, thin neon tube lettering, amber analysis readouts, and game artwork you can examine with a tracking crosshair.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Megacity",
+                      "branch":  "main",
+                      "preview":  "previews/Megacity.jpg"
+                  },
+                  {
+                      "id":  "Meridian",
+                      "kind":  "theme",
+                      "name":  "Meridian",
+                      "author":  "OriginalSwayze",
+                      "description":  "Steam rebuilt as a floating, spatial workspace: glass islands over a living aurora, a pill navigator, a centered dock, a cinematic game page and five hand-tuned color worlds.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Meridian",
+                      "branch":  "main",
+                      "preview":  "previews/Meridian.jpg"
+                  },
+                  {
+                      "id":  "Metro",
+                      "kind":  "theme",
+                      "name":  "Metro",
+                      "author":  "OriginalSwayze",
+                      "description":  "Modern industrial minimalism: flat squared graphite and gunmetal panels, one burnt accent, large light lowercase typography and generous spacing. Huge pivot headers for navigation, a lock-screen clock, flat dock tiles and animated accent lines.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Metro",
+                      "branch":  "main",
+                      "preview":  "previews/Metro.jpg"
+                  },
+                  {
+                      "id":  "Monsoon",
+                      "kind":  "theme",
+                      "name":  "Monsoon",
+                      "author":  "OriginalSwayze",
+                      "description":  "A rain-soaked noir city at night, seen through a detective\u0027s apartment window: wet teal glass panels, a sodium-orange glow, two layers of falling rain, black cinematic letterbox bars with navigation set as subtitles, a scene card with district, time and rainfall, film-graded images, and an opening title at boot.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Monsoon",
+                      "branch":  "main",
+                      "preview":  "previews/Monsoon.jpg"
+                  },
+                  {
+                      "id":  "NeonTokyo",
+                      "kind":  "theme",
+                      "name":  "Neon Tokyo",
+                      "author":  "OriginalSwayze",
+                      "description":  "A computer high in a night-time Tokyo tower: black glass panels with red and blue neon corners, a generated city skyline with flickering windows drifting behind everything, vertical neon signboards for navigation down the right edge (ã‚¹ãƒˆã‚¢ / ãƒ©ã‚¤ãƒ–ãƒ©ãƒª / ã‚³ãƒŸãƒ¥ãƒ‹ãƒ†ã‚£ / ãƒžã‚¤ãƒšãƒ¼ã‚¸), a Japanese date in the title bar, and a neon sign that switches on at boot.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/NeonTokyo",
+                      "branch":  "main",
+                      "preview":  "previews/NeonTokyo.jpg"
+                  },
+                  {
+                      "id":  "Nexus",
+                      "kind":  "theme",
+                      "name":  "Nexus",
+                      "author":  "OriginalSwayze",
+                      "description":  "A futuristic gaming command centre: NEXUS identity, METRO geometry, OBSIDIAN finish. OLED blacks, frosted graphite, thin illuminated separators, cyan for actions and focus, a slim icon sidebar, cinematic artwork tiles and a live system status readout.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Nexus",
+                      "branch":  "main",
+                      "preview":  "previews/Nexus.jpg"
+                  },
+                  {
+                      "id":  "Obsidian",
+                      "kind":  "theme",
+                      "name":  "Obsidian",
+                      "author":  "OriginalSwayze",
+                      "description":  "Premium dark glass for OLED: true black, a single centred smoky-glass slab holding the game list and page, silver hairlines, a whisper of violet, and an ambient light behind the slab that takes its colour from the current game\u0027s artwork.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Obsidian",
+                      "branch":  "main",
+                      "preview":  "previews/Obsidian.jpg"
+                  },
+                  {
+                      "id":  "Overdrive",
+                      "kind":  "theme",
+                      "name":  "Overdrive",
+                      "author":  "OriginalSwayze",
+                      "description":  "A neon cyberpunk HUD for Steam: cut-corner panels over a running grid city, slanted tabs, a glitching Play slab, CRT scanlines, a boot sequence and a live clock readout.",
+                      "version":  "1.1.0",
+                      "repo":  "OriginalSwayze/Overdrive",
+                      "branch":  "main",
+                      "preview":  "previews/Overdrive.jpg"
+                  },
+                  {
+                      "id":  "Phosphor",
+                      "kind":  "theme",
+                      "name":  "Phosphor",
+                      "author":  "OriginalSwayze",
+                      "description":  "Steam as a tiling terminal on a phosphor CRT: two panes with box-drawing borders, a tmux-style status line holding the tabs, dock and clock, reverse-video selection, monochrome images, a power-on self test, and a real command line (press \":\").",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Phosphor",
+                      "branch":  "main",
+                      "preview":  "previews/Phosphor.jpg"
+                  },
+                  {
+                      "id":  "Reliquary",
+                      "kind":  "theme",
+                      "name":  "Reliquary",
+                      "author":  "OriginalSwayze",
+                      "description":  "A forbidden archive beneath a ruined kingdom: obsidian black, antique gold and dark crimson, Palatino small caps, the game list written on a weathered parchment codex, the page set in a great gilded arch with a crimson keystone, navigation carved into a stone lintel with numerals, a votive candle that burns down through the hour, rising embers, and inscriptions for notifications.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Reliquary",
+                      "branch":  "main",
+                      "preview":  "previews/Reliquary.jpg"
+                  },
+                  {
+                      "id":  "Sentinel",
+                      "kind":  "theme",
+                      "name":  "Sentinel",
+                      "author":  "OriginalSwayze",
+                      "description":  "A tactical field-agent network: charcoal and black with one signal orange, notched plates, a tactical grid with a scanning line, the inventory (game list) docked on the right under an agent watch with an orange seconds ring, cut navigation tabs, and an agent-network friends list.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Sentinel",
+                      "branch":  "main",
+                      "preview":  "previews/Sentinel.jpg"
+                  },
+                  {
+                      "id":  "Shelter",
+                      "kind":  "theme",
+                      "name":  "Shelter",
+                      "author":  "OriginalSwayze",
+                      "description":  "A retro-futurist terminal in an underground shelter: the whole client on one rounded phosphor-green CRT set into an olive steel housing, tabs on a ruled line, an archived-programme list with reverse-video selection, phosphor-tinted covers that show their colour when you look closer, a shelter status line, a needle gauge, knobs and chunky service buttons in the housing, bulletin notifications and a power-on self test.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Shelter",
+                      "branch":  "main",
+                      "preview":  "previews/Shelter.jpg"
+                  },
+                  {
+                      "id":  "Silverbane",
+                      "kind":  "theme",
+                      "name":  "Silverbane",
+                      "author":  "OriginalSwayze",
+                      "description":  "A dark-fantasy grimoire for Steam: gilt-framed pages over a candlelit night of drifting fog and rising embers, serif small caps, a blood-red Play seal with a turning sigil, and a prologue when Steam opens.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Silverbane",
+                      "branch":  "main",
+                      "preview":  "previews/Silverbane.jpg"
+                  },
+                  {
+                      "id":  "Zenith",
+                      "kind":  "theme",
+                      "name":  "Zenith",
+                      "author":  "OriginalSwayze",
+                      "description":  "Steam under the real sky: the sky follows the actual time of day and season, from first light through daylight, golden hour and dusk to a slowly turning field of stars, with the sun on its true arc, the moon in its real phase, drifting clouds and the odd shooting star. Glass islands float above a horizon with a small observatory whose slit glows at night, navigation is a constellation, and an astrolabe shows the day arc, sun, moon, next sunrise or sunset and moon phase.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Zenith",
+                      "branch":  "main",
+                      "preview":  "previews/Zenith.jpg"
+                  },
+                  {
+                      "id":  "Kestrel",
+                      "kind":  "theme",
+                      "name":  "Playbox",
+                      "author":  "OriginalSwayze",
+                      "description":  "The companion theme for the Playbox plugin (124 switchable interfaces for Steam). Dresses Steam\u0027s own pages, dialogs, menus, notifications, friends and chat, sign-in, and the Store and Community in deep ink and amber so they match.",
+                      "version":  "1.0.0",
+                      "repo":  "OriginalSwayze/Playbox-Theme",
+                      "branch":  "main",
+                      "preview":  "previews/Kestrel.jpg"
+                  },
+                  {
+                      "id":  "com.originalswayze.kestrel",
+                      "kind":  "redesign",
+                      "name":  "Playbox",
+                      "author":  "OriginalSwayze",
+                      "version":  "1.1.0",
+                      "description":  "163 complete interfaces for Steam in one box: game launchers, game-menu worlds and more, switchable from a button in every top strip.",
+                      "zip":  "https://github.com/OriginalSwayze/Playbox/releases/latest/download/Playbox-BeyondSteam.zip",
+                      "theme":  "Kestrel",
+                      "preview":  "previews/playbox.png"
+                  }
+              ]
+}

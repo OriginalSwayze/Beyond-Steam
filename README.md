@@ -2,7 +2,16 @@
 
 Themes and full redesigns for the Steam desktop client, with no setup beyond running one program.
 
-> Early work in progress (0.3). Not released yet.
+> Early work in progress (0.4). Not released yet.
+
+## Install
+
+Download `BeyondSteam.exe` and run it.
+
+- It installs for your Windows account only (no administrator rights) and starts with Windows.
+- If Millennium is installed it offers to turn it off. Your Millennium themes and settings carry over.
+- It restarts Steam once.
+- To remove it, use Settings > Apps > Beyond Steam. Removing it offers to turn Millennium back on.
 
 ## What it does
 
@@ -17,6 +26,8 @@ Themes and full redesigns for the Steam desktop client, with no setup beyond run
   - A redesign is a folder with a `plugin.json` (`id`, `name`, `main`, and optionally `theme`, its companion theme) in `%APPDATA%Beyond Steamplugins`.
   - Its `main` script's default export runs inside Steam's interface. Steam's React is available as `window.SP_REACT`, `SP_REACTDOM` and `SP_JSX_FACTORY`, as under Millennium.
   - Redesigns that were on in Millennium start out on.
+- **Get more.** A catalog of themes and redesigns, installed and updated with one click. The list lives in [catalog/catalog.json](catalog/catalog.json); `tools/make-catalog.ps1` rebuilds it.
+- **Stands aside for Millennium.** If Millennium is running in Steam, Beyond Steam pauses instead of theming Steam twice.
 - **Previews fill themselves in.** A theme without a preview picture gets a snapshot of Steam wearing it the first time you use it.
 - **Theme switching.** If the previous theme ran scripts, Steam reloads its interface so nothing is left behind.
 - **No changes to Steam's files.** It doesn't touch Steam's program files.

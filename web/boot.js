@@ -19,7 +19,7 @@
 		['.ModalDialogPopup', 'libraryroot'], ['.FullModalOverlay', 'libraryroot'],
 	].map(([m, f]) => ({ MatchRegexString: m, TargetCss: f + '.custom.css', TargetJs: f + '.custom.js' }));
 
-	const BS = (window.__BS = { version: '0.3.0', host: HOST, state: null, api, refresh, setTheme, setCondition, setPlugin, open, restartUI, popups: () => popups(), loaded: {} });
+	const BS = (window.__BS = { version: '0.4.0', host: HOST, state: null, api, refresh, setTheme, setCondition, setPlugin, open, restartUI, popups: () => popups(), loaded: {} });
 
 	// Redesigns: add-ons that run inside Steam's interface (Playbox, for one). A redesign runs once per interface load,
 	// so turning one on or off reloads the interface.
@@ -89,7 +89,7 @@
 		SteamClient.Browser.RestartJSContext();
 	}
 
-	const BUTTON_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M3.2 15.5C1.6 11 6 5.2 12.6 3.6c4.3-1 7.6.3 8.4 2.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20.8 8.5c1.6 4.5-2.8 10.3-9.4 11.9-4.3 1-7.6-.3-8.4-2.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>';
+	const BUTTON_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path transform="rotate(-28 12 12)" d="M1.8 12A10.2 3.5 0 0 1 22.2 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" opacity=".55"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/><path transform="rotate(-28 12 12)" d="M22.2 12A10.2 3.5 0 0 1 1.8 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
 
 	// A Beyond Steam button beside Steam's own title-bar buttons, styled like them; Ctrl+Shift+B opens the window too.
 	function decorateMain(win) {
@@ -249,6 +249,8 @@
 	(async () => {
 		try { BS.state = await api('state'); } catch (e) { console.warn('[Beyond Steam] could not reach the app', e); }
 		while (!window.g_PopupManager?.AddPopupCreatedCallback) await sleep(50);
+		await sleep(500);
+		if (window.Millennium || window.MILLENNIUM_API) { console.warn('[Beyond Steam] Millennium is running; not applying anything'); return; }
 		g_PopupManager.AddPopupCreatedCallback((p) => patchSoon(p));
 		popups().forEach(patchSoon);
 		startPlugins();

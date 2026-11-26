@@ -298,6 +298,7 @@ std::vector<ThemeInfo> App::ListThemes() const {
 			t.folder = Narrow(dir.filename().wstring());
 			if (FindTheme(out, t.folder)) continue; // the user's own copy wins over an imported one
 			t.dir = dir;
+			t.own = root == themesDir;
 			t.name = j.value("name", t.folder);
 			t.author = j.value("author", "");
 			t.description = j.value("description", "");
@@ -432,7 +433,7 @@ json App::State() {
 	json list = json::array();
 	for (auto& t : all)
 		list.push_back({{"folder", t.folder}, {"name", t.name}, {"author", t.author}, {"description", t.description}, {"version", t.version},
-			{"preview", t.preview}, {"tags", t.tags}, {"options", t.options}});
+			{"preview", t.preview}, {"tags", t.tags}, {"options", t.options}, {"own", t.own}});
 	json plugins = ListPlugins();
 	for (auto& p : plugins) {
 		p["enabled"] = false;
@@ -505,6 +506,22 @@ HttpResponse App::Handle(const HttpRequest& req) {
 		res.body = Dump(State());
 		return res;
 	}
+	if (path == "/api/catalog") {
+		res.mime = "application/json";
+		res.body = Dump(Catalog());
+		return res;
+	}
+	if ((path == "/api/install" || path == "/api/remove") && req.method == "POST") {
+		if (!req.origin.empty() && req.origin != "https://steamloopback.host") return {403, "text/plain", "forbidden"};
+		json body = json::parse(req.body, nullptr, false);
+		std::string id = body.is_object() ? body.value("id", "") : "";
+		std::string error;
+		if (path == "/api/install") error = Install(id);
+		else Remove(body.value("kind", ""), id);
+		res.mime = "application/json";
+		res.body = Dump({{"ok", error.empty()}, {"error", error}, {"state", State()}});
+		return res;
+	}
 	if (path == "/api/capture" && req.method == "POST") {
 		if (!req.origin.empty() && req.origin != "https://steamloopback.host") return {403, "text/plain", "forbidden"};
 		res.mime = "application/json";
@@ -541,6 +558,7 @@ HttpResponse App::Handle(const HttpRequest& req) {
 	fs::path file;
 	bool ok = false;
 	if (path == "/boot.js") ok = SafeJoin(webDir, "boot.js", file);
+	else if (path.rfind("/catalog/", 0) == 0 && !webDir.empty()) ok = SafeJoin(webDir.parent_path() / L"catalog", path.substr(9), file);
 	else if (path.rfind("/plugins/", 0) == 0) ok = SafeJoin(pluginsDir, path.substr(9), file);
 	else if (path.rfind("/previews/", 0) == 0) ok = SafeJoin(dataDir / L"previews", path.substr(10), file);
 	else if (path.rfind("/web/", 0) == 0) ok = SafeJoin(webDir, path.substr(5), file);
@@ -553,6 +571,11 @@ HttpResponse App::Handle(const HttpRequest& req) {
 	if (ok && ReadFile(file, res.body)) {
 		res.mime = Mime(file);
 		return res;
+	}
+	if (path == "/boot.js" || path == "/web/manager.js") { // built into the .exe
+		res.body = Resource(path == "/boot.js" ? 101 : 102);
+		res.mime = "text/javascript";
+		if (!res.body.empty()) return res;
 	}
 	return {404, "text/plain", "Beyond Steam: not found: " + path};
 }
@@ -682,14 +705,20 @@ void App::EnsureBoot() {
 				if (t.value("title", "") == "SharedJSContext") return OnTarget(t);
 		return;
 	}
-	std::string ensure = "(() => { if (window.__BS || Date.now() - (window.__BS_loading || 0) < 10000) return 'ok'; window.__BS_loading = Date.now();"
+	// Millennium running too would theme Steam twice and start redesigns twice: stand aside until it is off.
+	std::string ensure = "(() => { if (window.Millennium || window.MILLENNIUM_API) return 'millennium';"
+		" if (window.__BS || Date.now() - (window.__BS_loading || 0) < 10000) return 'ok'; window.__BS_loading = Date.now();"
 		" const s = document.createElement('script'); s.src = '" + Base() + "/boot.js'; document.head.appendChild(s); return 'injected'; })()";
 	json r = cdp->Call("Runtime.evaluate", {{"expression", ensure}, {"returnByValue", true}}, session, 3000);
 	if (r.contains("error")) {
 		std::lock_guard<std::mutex> lock(sjcMu_);
 		if (sjcSession_ == session) sjcSession_.clear();
-	} else if (r["result"]["result"].value("value", "") == "injected") {
-		Log("started the in-Steam script");
+	} else {
+		std::string v = r["result"]["result"].value("value", "");
+		if (v == "injected") Log("started the in-Steam script");
+		Status was = status_;
+		status_ = v == "millennium" ? Status::MillenniumActive : Status::Connected;
+		if (status_ == Status::MillenniumActive && was != Status::MillenniumActive) Log("Millennium is running in Steam; Beyond Steam stays out of the way");
 	}
 }
 
@@ -723,7 +752,7 @@ void App::PatchIndex(const json& p, const std::string& session) {
 				std::string body = r["result"].value("body", "");
 				if (r["result"].value("base64Encoded", false)) body = Unbase64(body);
 				size_t at = body.find("</head>");
-				if (at != std::string::npos && body.find("<title>SharedJSContext</title>") != std::string::npos && body.find("/boot.js") == std::string::npos) {
+				if (status_ != Status::MillenniumActive && at != std::string::npos && body.find("<title>SharedJSContext</title>") != std::string::npos && body.find("/boot.js") == std::string::npos) {
 					body.insert(at, "<script src=\"" + Base() + "/boot.js\"></script>");
 					json headers = json::array();
 					for (auto& h : p.value("responseHeaders", json::array())) {
@@ -740,4 +769,125 @@ void App::PatchIndex(const json& p, const std::string& session) {
 		Log(std::string("UI page patch failed: ") + e.what());
 	}
 	cdp->Post("Fetch.continueResponse", id, session);
+}
+
+// ---------- built-in files, catalog, installing ----------
+
+std::string Resource(int id) {
+	HRSRC r = FindResourceW(nullptr, MAKEINTRESOURCEW(id), RT_RCDATA);
+	if (!r) return "";
+	HGLOBAL g = LoadResource(nullptr, r);
+	return g ? std::string((const char*)LockResource(g), SizeofResource(nullptr, r)) : "";
+}
+
+static const char* kCatalogBase = "https://raw.githubusercontent.com/OriginalSwayze/Beyond-Steam/main/catalog/";
+
+// The list behind the "Get more" tab: the developer's local copy, else the published one (cached ten minutes),
+// else the copy built into the .exe when offline.
+json App::Catalog() {
+	std::lock_guard<std::mutex> lock(catMu_);
+	if (catalog_.is_object() && GetTickCount64() - catalogAt_ < 10 * 60 * 1000) return {{"base", catalogBase_}, {"items", catalog_["items"]}, {"offline", false}};
+	std::string body, err;
+	json c;
+	bool offline = false;
+	if (!webDir.empty() && ReadFile(webDir.parent_path() / L"catalog" / L"catalog.json", body)) {
+		c = json::parse(body, nullptr, false);
+		catalogBase_ = Base() + "/catalog/";
+	} else if (HttpsGet(std::string(kCatalogBase) + "catalog.json", body, err, 4u << 20)) {
+		c = json::parse(body, nullptr, false);
+		catalogBase_ = kCatalogBase;
+	}
+	if (!c.is_object() || !c.contains("items")) {
+		c = json::parse(Resource(103), nullptr, false);
+		catalogBase_ = kCatalogBase;
+		offline = true;
+		Log("catalog: using the built-in copy (" + (err.empty() ? std::string("unreadable") : err) + ")");
+	}
+	if (!c.is_object() || !c.contains("items")) c = {{"items", json::array()}};
+	catalog_ = c;
+	catalogAt_ = offline ? 0 : GetTickCount64();
+	return {{"base", catalogBase_}, {"items", c["items"]}, {"offline", offline}};
+}
+
+static bool RunHidden(const std::wstring& cmd, DWORD timeoutMs) {
+	STARTUPINFOW si{sizeof si};
+	PROCESS_INFORMATION pi{};
+	std::wstring line = cmd;
+	if (!CreateProcessW(nullptr, line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) return false;
+	DWORD code = 1;
+	if (WaitForSingleObject(pi.hProcess, timeoutMs) == WAIT_OBJECT_0) GetExitCodeProcess(pi.hProcess, &code);
+	else TerminateProcess(pi.hProcess, 1);
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
+	return code == 0;
+}
+
+static bool ValidId(const std::string& id) {
+	return !id.empty() && id != "." && id != ".." &&
+		id.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-") == std::string::npos;
+}
+
+std::string App::Install(const std::string& id) {
+	if (!ValidId(id)) return "That isn't a valid item.";
+	json cat = Catalog();
+	json item;
+	for (auto& i : cat["items"]) if (i.value("id", "") == id) item = i;
+	if (!item.is_object()) return "That item isn't in the catalog.";
+	const bool theme = item.value("kind", "") == "theme";
+	std::string url = item.value("zip", "");
+	if (url.empty()) url = "https://codeload.github.com/" + item.value("repo", "") + "/zip/refs/heads/" + item.value("branch", "main");
+	Log("installing " + id + " from " + url);
+
+	std::string zip, err;
+	if (!HttpsGet(url, zip, err)) { Log("download failed: " + err); return "Couldn't download it: " + err + "."; }
+	std::error_code ec;
+	fs::path tmp = dataDir / L"tmp" / Widen(id);
+	fs::remove_all(tmp, ec);
+	fs::create_directories(tmp / L"x", ec);
+	{
+		std::ofstream f(tmp / L"download.zip", std::ios::binary);
+		f.write(zip.data(), (std::streamsize)zip.size());
+	}
+	wchar_t sys[MAX_PATH];
+	GetSystemDirectoryW(sys, MAX_PATH);
+	std::wstring cmd = L"\"" + std::wstring(sys) + L"\\tar.exe\" -xf \"" + (tmp / L"download.zip").wstring() + L"\" -C \"" + (tmp / L"x").wstring() + L"\"";
+	if (!RunHidden(cmd, 180000)) { fs::remove_all(tmp, ec); return "Couldn't unpack the download."; }
+
+	// The files may sit in the zip's top level or in one folder inside it (GitHub's own zips).
+	const wchar_t* marker = theme ? L"skin.json" : L"plugin.json";
+	fs::path src = tmp / L"x";
+	if (!fs::exists(src / marker, ec)) {
+		fs::path only;
+		int dirs = 0;
+		for (auto& e : fs::directory_iterator(src, ec)) if (e.is_directory()) { only = e.path(); dirs++; }
+		if (dirs == 1 && fs::exists(only / marker, ec)) src = only;
+		else { fs::remove_all(tmp, ec); return std::string("The download has no ") + (theme ? "skin.json" : "plugin.json") + "."; }
+	}
+	fs::path dest = (theme ? themesDir : pluginsDir) / Widen(id), old = dest;
+	old += L".old";
+	fs::remove_all(old, ec);
+	if (fs::exists(dest, ec)) fs::rename(dest, old, ec);
+	ec.clear();
+	fs::rename(src, dest, ec);
+	if (ec) { std::error_code e2; fs::rename(old, dest, e2); fs::remove_all(tmp, e2); return "Couldn't put the files in place (is a file open?)."; }
+	fs::remove_all(old, ec);
+	fs::remove_all(tmp, ec);
+	Log("installed " + id);
+	return "";
+}
+
+void App::Remove(const std::string& kind, const std::string& id) {
+	if (!ValidId(id)) return;
+	std::error_code ec;
+	fs::remove_all((kind == "theme" ? themesDir : pluginsDir) / Widen(id), ec);
+	std::lock_guard<std::mutex> lock(cfgMu_);
+	json cfg = LoadConfig();
+	if (kind == "theme" && _stricmp(cfg.value("activeTheme", "").c_str(), id.c_str()) == 0 && !FindTheme(ListThemes(), id)) cfg["activeTheme"] = "";
+	if (kind != "theme") {
+		json list = json::array();
+		for (auto& e : cfg.value("plugins", json::array())) if (e != id) list.push_back(e);
+		cfg["plugins"] = list;
+	}
+	SaveConfig(cfg);
+	Log("removed " + kind + " " + id);
 }

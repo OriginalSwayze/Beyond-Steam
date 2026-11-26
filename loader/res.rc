@@ -1,0 +1,5 @@
+// Built into BeyondSteam.exe: the icon, and the files Steam loads (so one .exe is all a user needs).
+1 ICON "beyondsteam.ico"
+101 RCDATA "../web/boot.js"
+102 RCDATA "../web/manager.js"
+103 RCDATA "../catalog/catalog.json"

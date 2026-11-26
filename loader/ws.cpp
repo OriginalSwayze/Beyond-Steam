@@ -84,3 +84,42 @@ void WebSocket::Close() {
 	if (conn_) { WinHttpCloseHandle(conn_); conn_ = nullptr; }
 	if (session_) { WinHttpCloseHandle(session_); session_ = nullptr; }
 }
+
+bool HttpsGet(const std::string& url, std::string& body, std::string& err, size_t maxBytes) {
+	body.clear();
+	std::wstring wurl = Widen(url);
+	URL_COMPONENTS u{sizeof u};
+	wchar_t host[256], path[2048];
+	u.lpszHostName = host; u.dwHostNameLength = 256;
+	u.lpszUrlPath = path; u.dwUrlPathLength = 2048;
+	if (!WinHttpCrackUrl(wurl.c_str(), 0, 0, &u) || u.nScheme != INTERNET_SCHEME_HTTPS) { err = "not an https address"; return false; }
+	HINTERNET s = WinHttpOpen(L"BeyondSteam", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, nullptr, nullptr, 0);
+	if (!s) { err = "network unavailable"; return false; }
+	WinHttpSetTimeouts(s, 10000, 10000, 15000, 30000);
+	bool ok = false;
+	if (HINTERNET c = WinHttpConnect(s, host, u.nPort, 0)) {
+		if (HINTERNET r = WinHttpOpenRequest(c, L"GET", path, nullptr, nullptr, nullptr, WINHTTP_FLAG_SECURE)) {
+			if (WinHttpSendRequest(r, WINHTTP_NO_ADDITIONAL_HEADERS, 0, nullptr, 0, 0, 0) && WinHttpReceiveResponse(r, nullptr)) {
+				DWORD status = 0, len = sizeof status;
+				WinHttpQueryHeaders(r, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &len, nullptr);
+				if (status == 200) {
+					static thread_local char buf[1 << 16];
+					DWORD n = 0;
+					ok = true;
+					while (WinHttpReadData(r, buf, sizeof buf, &n) && n) {
+						body.append(buf, n);
+						if (body.size() > maxBytes) { ok = false; err = "download too large"; break; }
+					}
+				} else {
+					err = "the server answered " + std::to_string(status);
+				}
+			} else {
+				err = "could not connect (error " + std::to_string(GetLastError()) + ")";
+			}
+			WinHttpCloseHandle(r);
+		}
+		WinHttpCloseHandle(c);
+	}
+	WinHttpCloseHandle(s);
+	return ok;
+}

@@ -25,3 +25,6 @@ private:
 	std::atomic<HINTERNET> ws_{nullptr};
 	std::mutex sendMu_;
 };
+
+// GET any https:// address (follows redirects). Fails above maxBytes. err says why on failure.
+bool HttpsGet(const std::string& url, std::string& body, std::string& err, size_t maxBytes = 200u << 20);

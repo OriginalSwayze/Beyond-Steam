@@ -4,7 +4,7 @@
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const hue = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 
-const ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M3.2 15.5C1.6 11 6 5.2 12.6 3.6c4.3-1 7.6.3 8.4 2.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M20.8 8.5c1.6 4.5-2.8 10.3-9.4 11.9-4.3 1-7.6-.3-8.4-2.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".55"/></svg>`;
+const ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path transform="rotate(-28 12 12)" d="M1.8 12A10.2 3.5 0 0 1 22.2 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" opacity=".55"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/><path transform="rotate(-28 12 12)" d="M22.2 12A10.2 3.5 0 0 1 1.8 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>`;
 export { ICON };
 
 const CSS = `
@@ -66,7 +66,16 @@ select { height: 34px; min-width: 180px; padding: 0 10px; border: 0; border-radi
 .toggle { width: 44px; height: 24px; border-radius: 99px; background: #2A3040; position: relative; transition: background .15s; }
 .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #C9D0DC; transition: transform .15s; }
 .toggle.on { background: #5FCFC0; } .toggle.on::after { transform: translateX(20px); background: #fff; }
-.sub { color: #8A93A6; font-size: 13px; } .bad { color: #FF9A8A !important; }
+.sub { color: #8A93A6; font-size: 13px; }
+.chip { padding: 7px 14px; border-radius: 99px; background: #1A1E27; color: #9AA3B5; font-weight: 600; font-size: 13px; } .chip:hover { color: #E8ECF4; }
+.chip.on { background: #E8ECF4; color: #0E1117; }
+.card.static:hover { transform: none; }
+.kind { position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 99px; background: rgba(10,12,18,.78); color: #C9D0DC; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.desc { margin: 6px 0 0; color: #8A93A6; font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; } .acts .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.quiet { background: transparent; color: #9AA3B5; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); } .btn.quiet:hover { color: #FFB4A8; }
+.btn[disabled] { opacity: .7; cursor: default; }
+.tag { font-size: 12px; font-weight: 600; color: #7FE0D3; } .bad { color: #FF9A8A !important; }
 .kbd { padding: 1px 6px; border-radius: 4px; background: #232836; font: 12px Consolas, monospace; }
 `;
 
@@ -100,10 +109,10 @@ export function open(BS, tab = 'themes') {
 	const root = host.attachShadow({ mode: 'open' });
 	root.innerHTML = `<style>${CSS}</style><div class="root"><div class="scrim"></div><section class="panel" role="dialog" aria-modal="true" aria-label="Beyond Steam">
 		<header><div class="brand">${ICON}<span>Beyond Steam <small>${esc(BS.state?.version || '')}</small></span></div>
-		<nav><button data-tab="themes">Themes</button><button data-tab="options">Theme options</button><button data-tab="redesigns">Redesigns</button><button data-tab="about">Settings</button></nav>
+		<nav><button data-tab="themes">Themes</button><button data-tab="options">Theme options</button><button data-tab="redesigns">Redesigns</button><button data-tab="more">Get more</button><button data-tab="about">Settings</button></nav>
 		<span class="spacer"></span><button class="x" data-act="close" aria-label="Close">×</button></header>
 		<main></main></section></div>`;
-	ui = { host, root, win, tab, q: '', reloadNote: false };
+	ui = { host, root, win, tab, q: '', reloadNote: false, catalog: null, kind: 'all', busy: {}, errors: {}, confirm: null };
 	ui.onKey = (e) => {
 		if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); }
 		else if (root.activeElement || e.composedPath().includes(host)) e.stopPropagation(); // keep typing out of Steam's own shortcuts
@@ -130,7 +139,7 @@ function render(BS) {
 	const main = ui.root.querySelector('main');
 	const keepScroll = main.dataset.tab === ui.tab ? main.scrollTop : 0;
 	const focused = ui.root.activeElement?.classList.contains('search');
-	main.innerHTML = ui.tab === 'themes' ? themesView(st) : ui.tab === 'options' ? optionsView(st) : ui.tab === 'redesigns' ? redesignsView(st, BS) : aboutView(st);
+	main.innerHTML = ui.tab === 'themes' ? themesView(st) : ui.tab === 'options' ? optionsView(st) : ui.tab === 'redesigns' ? redesignsView(st, BS) : ui.tab === 'more' ? moreView(st, BS) : aboutView(st);
 	main.dataset.tab = ui.tab;
 	main.scrollTop = keepScroll;
 	if (focused) { const s = ui.root.querySelector('.search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
@@ -201,6 +210,45 @@ function redesignsView(st, BS) {
 		<div class="row"><div><b>Redesigns folder</b><p><code>${esc(st.pluginsDir || '')}</code></p></div><button class="btn" data-act="plugins">Open folder</button></div></div>`;
 }
 
+// "Get more": themes and redesigns from the Beyond Steam catalog, installed with one click.
+function moreView(st, BS) {
+	if (!ui.catalog) {
+		ui.catalog = 'loading';
+		fetch(BS.host + '/api/catalog', { cache: 'no-store' }).then((r) => r.json()).then((c) => { ui && (ui.catalog = c); render(BS); })
+			.catch(() => { ui && (ui.catalog = { items: [], failed: true }); render(BS); });
+	}
+	if (ui.catalog === 'loading') return '<div class="empty">Loading the catalog…</div>';
+	const c = ui.catalog;
+	const items = (c.items || []).filter((i) => ui.kind === 'all' || i.kind === ui.kind);
+	const chip = (k, label) => `<button class="chip${ui.kind === k ? ' on' : ''}" data-kind="${k}">${label}</button>`;
+	const card = (i) => {
+		const theme = i.kind === 'theme';
+		const have = theme ? (st.themes || []).find((t) => t.folder.toLowerCase() === i.id.toLowerCase()) : (st.plugins || []).find((p) => p.id === i.id);
+		const own = theme ? have?.own : !!have;
+		const busy = ui.busy[i.id];
+		const pic = i.preview ? `<img loading="lazy" decoding="async" src="${esc(/^https?:/.test(i.preview) ? i.preview : (c.base || '') + i.preview)}" alt="${esc(i.name)}">`
+			: `<div class="ph" style="--h:${hue(i.name)}">${esc(i.name.slice(0, 1))}</div>`;
+		let acts = '';
+		if (busy) acts = `<button class="btn" disabled>${esc(busy)}</button>`;
+		else if (!have) acts = `<button class="btn primary" data-install="${esc(i.id)}">Install</button>`;
+		else {
+			if (theme && st.active?.toLowerCase() !== i.id.toLowerCase()) acts += `<button class="btn" data-theme="${esc(have.folder)}">Use</button>`;
+			if (theme && st.active?.toLowerCase() === i.id.toLowerCase()) acts += '<span class="tag">In use</span>';
+			if (!theme) acts += `<button class="btn" data-plugin="${esc(i.id)}">${have.enabled ? 'Turn off' : 'Turn on'}</button>`;
+			if (own) {
+				acts += `<button class="btn" data-install="${esc(i.id)}">Update</button>`;
+				acts += `<button class="btn quiet" data-remove="${esc(i.id)}" data-rkind="${theme ? 'theme' : 'redesign'}">${ui.confirm === i.id ? 'Click again to remove' : 'Remove'}</button>`;
+			} else if (theme) acts += '<span class="tag" title="This copy is in Millennium\'s themes folder">Installed</span>';
+		}
+		return `<div class="card static"><div class="pv">${pic}<span class="kind">${theme ? 'Theme' : 'Redesign'}</span></div>
+			<div class="meta"><b>${esc(i.name)}</b><small>${esc(i.author || '')}${i.version ? ' · v' + esc(i.version) : ''}</small>
+			<p class="desc">${esc(i.description || '')}</p>${ui.errors[i.id] ? `<p class="bad">${esc(ui.errors[i.id])}</p>` : ''}<div class="acts">${acts}</div></div></div>`;
+	};
+	return `<div class="bar">${chip('all', 'Everything')}${chip('theme', 'Themes')}${chip('redesign', 'Redesigns')}<span class="spacer"></span>
+		<span class="count">${c.offline ? 'Offline: showing the built-in list' : (c.items || []).length + ' in the catalog'}</span></div>
+		${items.length ? `<div class="grid">${items.map(card).join('')}</div>` : '<div class="empty">Nothing here yet.</div>'}`;
+}
+
 function aboutView(st) {
 	return `<div class="about"><h2>Settings</h2>
 		<div class="row"><div><b>Start with Windows</b><p>Beyond Steam waits in the tray and themes Steam whenever it starts.</p></div><button class="toggle" data-act="autostart" aria-label="Start with Windows"></button></div>
@@ -235,7 +283,34 @@ async function onClick(BS, e) {
 	if (el.dataset.act === 'close') return close();
 	if (el.dataset.act === 'folder') return appApi({ open: 'themes' });
 	if (el.dataset.act === 'plugins') return appApi({ open: 'plugins' });
-	if (el.dataset.plugin !== undefined) return BS.setPlugin(el.dataset.plugin, !el.classList.contains('on'));
+	if (el.dataset.plugin !== undefined) {
+		const p = (BS.state?.plugins || []).find((x) => x.id === el.dataset.plugin);
+		return BS.setPlugin(el.dataset.plugin, !(p?.enabled));
+	}
+	if (el.dataset.kind) { ui.kind = el.dataset.kind; render(BS); return; }
+	if (el.dataset.install) {
+		const id = el.dataset.install, item = (ui.catalog?.items || []).find((i) => i.id === id);
+		ui.busy[id] = 'Downloading…'; delete ui.errors[id]; render(BS);
+		try {
+			const r = await (await fetch(BS.host + '/api/install', { method: 'POST', body: JSON.stringify({ id }) })).json();
+			if (r.state) BS.state = r.state;
+			if (!r.ok) ui.errors[id] = r.error || 'It could not be installed.';
+			else if (item?.kind === 'redesign' && !(BS.state.plugins || []).find((p) => p.id === id)?.enabled) ui.errors[id] = 'Installed. Turn it on when you are ready.';
+		} catch { ui.errors[id] = 'Beyond Steam did not answer.'; }
+		delete ui.busy[id];
+		window.dispatchEvent(new CustomEvent('beyondsteam-state', { detail: BS.state }));
+		render(BS);
+		return;
+	}
+	if (el.dataset.remove) {
+		const id = el.dataset.remove;
+		if (ui.confirm !== id) { ui.confirm = id; render(BS); setTimeout(() => { if (ui?.confirm === id) { ui.confirm = null; render(BS); } }, 3500); return; }
+		ui.confirm = null;
+		const r = await (await fetch(BS.host + '/api/remove', { method: 'POST', body: JSON.stringify({ id, kind: el.dataset.rkind }) })).json();
+		if (r.state) BS.state = r.state;
+		await BS.refresh();
+		return;
+	}
 	if (el.dataset.act === 'log') return appApi({ open: 'log' });
 	if (el.dataset.act === 'reload') return BS.restartUI('options');
 	if (el.dataset.act === 'autostart') { const a = await appApi({ autostart: !el.classList.contains('on') }); el.classList.toggle('on', !!a.autostart); return; }
