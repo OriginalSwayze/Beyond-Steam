@@ -2,7 +2,7 @@
 
 Themes and full redesigns for the Steam desktop client, with no setup beyond running one program.
 
-> Early work in progress (0.2). Not released yet.
+> Early work in progress (0.3). Not released yet.
 
 ## What it does
 
@@ -13,6 +13,10 @@ Themes and full redesigns for the Steam desktop client, with no setup beyond run
   - **Themes:** browse all themes with previews and search, and switch with one click.
   - **Theme options:** the active theme's options, grouped the way the theme groups them, applied instantly.
   - **Settings:** start with Windows, the themes folder, the log.
+- **Redesigns.** Add-ons that replace Steam's interface with a new one, such as [Playbox](https://github.com/OriginalSwayze/Playbox). Turn them on and off under Redesigns.
+  - A redesign is a folder with a `plugin.json` (`id`, `name`, `main`, and optionally `theme`, its companion theme) in `%APPDATA%Beyond Steamplugins`.
+  - Its `main` script's default export runs inside Steam's interface. Steam's React is available as `window.SP_REACT`, `SP_REACTDOM` and `SP_JSX_FACTORY`, as under Millennium.
+  - Redesigns that were on in Millennium start out on.
 - **Previews fill themselves in.** A theme without a preview picture gets a snapshot of Steam wearing it the first time you use it.
 - **Theme switching.** If the previous theme ran scripts, Steam reloads its interface so nothing is left behind.
 - **No changes to Steam's files.** It doesn't touch Steam's program files.

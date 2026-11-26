@@ -160,8 +160,10 @@ App::App() {
 	dataDir = fs::path(appdata) / L"Beyond Steam";
 	CoTaskMemFree(appdata);
 	themesDir = dataDir / L"themes";
+	pluginsDir = dataDir / L"plugins";
 	std::error_code ec;
 	fs::create_directories(themesDir, ec);
+	fs::create_directories(pluginsDir, ec);
 	g_logPath = dataDir / L"log.txt";
 
 	wchar_t exe[MAX_PATH];
@@ -186,14 +188,25 @@ std::shared_ptr<Cdp> App::Client() {
 
 json App::LoadConfig() {
 	std::string text;
+	json millennium;
+	if (ReadFile(steamDir / L"millennium" / L"config" / L"config.json", text)) millennium = json::parse(text, nullptr, false);
+	auto importPlugins = [&](json& cfg) { // redesigns that were on in Millennium start out on here too
+		cfg["plugins"] = json::array();
+		if (millennium.is_object() && millennium.contains("plugins") && millennium["plugins"].contains("enabledPlugins") && millennium["plugins"]["enabledPlugins"].is_array())
+			cfg["plugins"] = millennium["plugins"]["enabledPlugins"];
+	};
 	if (ReadFile(dataDir / L"config.json", text)) {
 		json j = json::parse(text, nullptr, false);
-		if (j.is_object()) return j;
+		if (j.is_object()) {
+			if (!j.contains("plugins")) { importPlugins(j); SaveConfig(j); }
+			return j;
+		}
 	}
 	// First run: carry over the theme and options chosen in Millennium, if it was used.
 	json cfg = {{"activeTheme", ""}, {"conditions", json::object()}};
-	if (ReadFile(steamDir / L"millennium" / L"config" / L"config.json", text)) {
-		json m = json::parse(text, nullptr, false);
+	importPlugins(cfg);
+	{
+		json& m = millennium;
 		if (m.is_object() && m.contains("themes")) {
 			auto& t = m["themes"];
 			if (t.value("activeTheme", "") != "default") cfg["activeTheme"] = t.value("activeTheme", "");
@@ -297,6 +310,22 @@ std::vector<ThemeInfo> App::ListThemes() const {
 		ec.clear();
 	}
 	std::sort(out.begin(), out.end(), [](const ThemeInfo& a, const ThemeInfo& b) { return Lower(a.name) < Lower(b.name); });
+	return out;
+}
+
+json App::ListPlugins() const {
+	json out = json::array();
+	std::error_code ec;
+	for (auto it = fs::directory_iterator(pluginsDir, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+		std::string text;
+		if (!ReadFile(it->path() / L"plugin.json", text)) continue;
+		json j = json::parse(text, nullptr, false, true);
+		if (!j.is_object() || !j.contains("main") || !j["main"].is_string()) continue;
+		std::string folder = Narrow(it->path().filename().wstring());
+		out.push_back({{"folder", folder}, {"id", j.value("id", folder)}, {"name", j.value("name", folder)}, {"version", j.value("version", "")},
+			{"author", j.value("author", "")}, {"description", j.value("description", "")}, {"main", j["main"]}, {"theme", j.value("theme", "")},
+			{"home", j.value("home", "")}});
+	}
 	return out;
 }
 
@@ -404,7 +433,13 @@ json App::State() {
 	for (auto& t : all)
 		list.push_back({{"folder", t.folder}, {"name", t.name}, {"author", t.author}, {"description", t.description}, {"version", t.version},
 			{"preview", t.preview}, {"tags", t.tags}, {"options", t.options}});
-	json st = {{"version", kVersion}, {"accent", AccentHex()}, {"themesDir", Narrow(themesDir.wstring())}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
+	json plugins = ListPlugins();
+	for (auto& p : plugins) {
+		p["enabled"] = false;
+		if (cfg.contains("plugins") && cfg["plugins"].is_array())
+			for (auto& e : cfg["plugins"]) if (e.is_string() && e.get<std::string>() == p["id"].get<std::string>()) p["enabled"] = true;
+	}
+	json st = {{"version", kVersion}, {"accent", AccentHex()}, {"themesDir", Narrow(themesDir.wstring())}, {"pluginsDir", Narrow(pluginsDir.wstring())}, {"plugins", plugins}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
 
 	const ThemeInfo* t = FindTheme(all, cfg.value("activeTheme", ""));
 	if (!t) return st;
@@ -451,6 +486,14 @@ HttpResponse App::Handle(const HttpRequest& req) {
 			std::lock_guard<std::mutex> lock(cfgMu_);
 			json cfg = LoadConfig();
 			if (body.contains("active") && body["active"].is_string()) cfg["activeTheme"] = body["active"];
+			if (body.contains("plugin") && body["plugin"].is_object() && body["plugin"].contains("id")) {
+				json list = json::array();
+				std::string id = body["plugin"].value("id", "");
+				for (auto& e : cfg.value("plugins", json::array())) if (e != id) list.push_back(e);
+				if (body["plugin"].value("enabled", false)) list.push_back(id);
+				cfg["plugins"] = list;
+				Log((body["plugin"].value("enabled", false) ? "turned on redesign " : "turned off redesign ") + id);
+			}
 			if (body.contains("conditions") && body["conditions"].is_object()) {
 				std::string theme = cfg.value("activeTheme", "");
 				if (!cfg["conditions"].is_object()) cfg["conditions"] = json::object();
@@ -473,6 +516,7 @@ HttpResponse App::Handle(const HttpRequest& req) {
 			if (!req.origin.empty() && req.origin != "https://steamloopback.host") return {403, "text/plain", "forbidden"};
 			json body = json::parse(req.body, nullptr, false);
 			if (body.is_object() && body.contains("autostart") && body["autostart"].is_boolean()) SetAutostart(body["autostart"].get<bool>());
+			if (body.is_object() && body.value("open", "") == "plugins") ShellExecuteW(nullptr, L"open", pluginsDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 			if (body.is_object() && body.value("open", "") == "themes") ShellExecuteW(nullptr, L"open", themesDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 			if (body.is_object() && body.value("open", "") == "steam") ShowSteamWindow();
 			if (body.is_object() && body.value("open", "") == "log") ShellExecuteW(nullptr, L"open", (dataDir / L"log.txt").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -497,6 +541,7 @@ HttpResponse App::Handle(const HttpRequest& req) {
 	fs::path file;
 	bool ok = false;
 	if (path == "/boot.js") ok = SafeJoin(webDir, "boot.js", file);
+	else if (path.rfind("/plugins/", 0) == 0) ok = SafeJoin(pluginsDir, path.substr(9), file);
 	else if (path.rfind("/previews/", 0) == 0) ok = SafeJoin(dataDir / L"previews", path.substr(10), file);
 	else if (path.rfind("/web/", 0) == 0) ok = SafeJoin(webDir, path.substr(5), file);
 	else if (path.rfind("/themes/", 0) == 0) {

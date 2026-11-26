@@ -19,7 +19,62 @@
 		['.ModalDialogPopup', 'libraryroot'], ['.FullModalOverlay', 'libraryroot'],
 	].map(([m, f]) => ({ MatchRegexString: m, TargetCss: f + '.custom.css', TargetJs: f + '.custom.js' }));
 
-	const BS = (window.__BS = { version: '0.2.0', host: HOST, state: null, api, refresh, setTheme, setCondition, open, restartUI, popups: () => popups() });
+	const BS = (window.__BS = { version: '0.3.0', host: HOST, state: null, api, refresh, setTheme, setCondition, setPlugin, open, restartUI, popups: () => popups(), loaded: {} });
+
+	// Redesigns: add-ons that run inside Steam's interface (Playbox, for one). A redesign runs once per interface load,
+	// so turning one on or off reloads the interface.
+	// Steam bundles React inside its own code without exposing it. Redesigns expect it at window.SP_REACT,
+	// SP_REACTDOM and SP_JSX_FACTORY (the names Millennium used), so find it among Steam's webpack modules.
+	function exposeReact() {
+		if (window.SP_REACT && window.SP_REACTDOM && window.SP_JSX_FACTORY) return true;
+		if (!window.webpackChunksteamui) return false;
+		let req;
+		window.webpackChunksteamui.push([[Symbol('beyondsteam')], {}, (r) => { req = r; }]);
+		if (!req?.m) return false;
+		const mods = [];
+		for (const id of Object.keys(req.m)) { try { const m = req(id); if (m) mods.push(m); } catch {} }
+		const find = (f) => {
+			for (const m of mods) {
+				try { if (m.default && f(m.default)) return m.default; if (f(m)) return m; } catch {}
+			}
+		};
+		const React = find((m) => m.Component && m.PureComponent && m.useLayoutEffect);
+		if (!React) return false;
+		const dom = find((m) => m.createPortal && m.createRoot) ||
+			{ ...find((m) => m.createPortal && m.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE), ...find((m) => m.createRoot) };
+		const newJsx = find((m) => m?.jsx && m?.Fragment && m?.jsxs);
+		const oldJsx = find((m) => m.jsx && Object.keys(m).length === 1)?.jsx;
+		const jsx = newJsx || (oldJsx && { Fragment: React.Fragment, jsx: oldJsx, jsxs: oldJsx });
+		if (!dom?.createRoot || !jsx) return false;
+		window.SP_REACT ??= React;
+		window.SP_REACTDOM ??= dom;
+		window.SP_JSX_FACTORY ??= jsx;
+		console.log('[Beyond Steam] found the React built into Steam', React.version);
+		return true;
+	}
+
+	async function startPlugins() {
+		if (!(BS.state?.plugins || []).some((p) => p.enabled)) return;
+		// Steam finishes loading its code a little after its interface page starts; keep looking for up to two minutes.
+		for (let i = 0; i < 240 && !exposeReact(); i++) await sleep(500);
+		for (const p of BS.state?.plugins || []) {
+			if (!p.enabled) continue;
+			try {
+				const mod = await import(HOST + '/plugins/' + encodeURIComponent(p.folder) + '/' + String(p.main).split('/').map(encodeURIComponent).join('/'));
+				if (typeof mod.default === 'function') await mod.default();
+				BS.loaded[p.id] = 'running';
+				console.log('[Beyond Steam] started redesign', p.name);
+			} catch (e) {
+				BS.loaded[p.id] = 'failed: ' + (e?.message || e);
+				console.error('[Beyond Steam] redesign failed to start:', p.name, e);
+			}
+		}
+	}
+
+	async function setPlugin(id, enabled) {
+		BS.state = await api('set', { plugin: { id, enabled } });
+		restartUI(manager?.isOpen() ? 'redesigns' : null);
+	}
 
 	// The Beyond Steam window (web/manager.js), loaded the first time it is opened.
 	let manager = null;
@@ -196,6 +251,7 @@
 		while (!window.g_PopupManager?.AddPopupCreatedCallback) await sleep(50);
 		g_PopupManager.AddPopupCreatedCallback((p) => patchSoon(p));
 		popups().forEach(patchSoon);
+		startPlugins();
 		console.log('[Beyond Steam] ready, theme:', BS.state?.active || '(none)');
 		// Keep the title-bar button in place if Steam redraws its title bar.
 		setInterval(() => { const w = g_PopupManager.GetExistingPopup('SP Desktop_uid0')?.m_popup?.window; if (w) decorateMain(w); }, 2000);

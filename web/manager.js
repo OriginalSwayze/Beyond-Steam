@@ -66,6 +66,7 @@ select { height: 34px; min-width: 180px; padding: 0 10px; border: 0; border-radi
 .toggle { width: 44px; height: 24px; border-radius: 99px; background: #2A3040; position: relative; transition: background .15s; }
 .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #C9D0DC; transition: transform .15s; }
 .toggle.on { background: #5FCFC0; } .toggle.on::after { transform: translateX(20px); background: #fff; }
+.sub { color: #8A93A6; font-size: 13px; } .bad { color: #FF9A8A !important; }
 .kbd { padding: 1px 6px; border-radius: 4px; background: #232836; font: 12px Consolas, monospace; }
 `;
 
@@ -99,7 +100,7 @@ export function open(BS, tab = 'themes') {
 	const root = host.attachShadow({ mode: 'open' });
 	root.innerHTML = `<style>${CSS}</style><div class="root"><div class="scrim"></div><section class="panel" role="dialog" aria-modal="true" aria-label="Beyond Steam">
 		<header><div class="brand">${ICON}<span>Beyond Steam <small>${esc(BS.state?.version || '')}</small></span></div>
-		<nav><button data-tab="themes">Themes</button><button data-tab="options">Theme options</button><button data-tab="about">Settings</button></nav>
+		<nav><button data-tab="themes">Themes</button><button data-tab="options">Theme options</button><button data-tab="redesigns">Redesigns</button><button data-tab="about">Settings</button></nav>
 		<span class="spacer"></span><button class="x" data-act="close" aria-label="Close">×</button></header>
 		<main></main></section></div>`;
 	ui = { host, root, win, tab, q: '', reloadNote: false };
@@ -129,7 +130,7 @@ function render(BS) {
 	const main = ui.root.querySelector('main');
 	const keepScroll = main.dataset.tab === ui.tab ? main.scrollTop : 0;
 	const focused = ui.root.activeElement?.classList.contains('search');
-	main.innerHTML = ui.tab === 'themes' ? themesView(st) : ui.tab === 'options' ? optionsView(st) : aboutView(st);
+	main.innerHTML = ui.tab === 'themes' ? themesView(st) : ui.tab === 'options' ? optionsView(st) : ui.tab === 'redesigns' ? redesignsView(st, BS) : aboutView(st);
 	main.dataset.tab = ui.tab;
 	main.scrollTop = keepScroll;
 	if (focused) { const s = ui.root.querySelector('.search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
@@ -183,6 +184,23 @@ function optionsView(st) {
 			`<div class="opt"><b>${esc(name)}</b>${def.description ? `<p>${esc(def.description)}</p>` : ''}<div class="ctl">${control(name, def)}</div></div>`).join('')}</div>`).join('');
 }
 
+function redesignsView(st, BS) {
+	const list = st.plugins || [];
+	const themeName = (f) => (st.themes || []).find((t) => t.folder.toLowerCase() === String(f).toLowerCase())?.name;
+	const item = (p) => {
+		const status = BS.loaded?.[p.id];
+		const failed = p.enabled && status && status.startsWith('failed');
+		const companion = p.theme && themeName(p.theme) && st.active?.toLowerCase() !== p.theme.toLowerCase()
+			? `<button class="btn" data-theme="${esc(p.theme)}">Use its theme, ${esc(themeName(p.theme))}</button>` : '';
+		return `<div class="row"><div><b>${esc(p.name)}</b> <span class="sub">${esc(p.author)}${p.version ? ' · v' + esc(p.version) : ''}</span>
+			<p>${esc(p.description)}</p>${failed ? `<p class="bad">It could not start: ${esc(status.slice(8))}</p>` : ''}</div>
+			${p.enabled ? companion : ''}<button class="toggle${p.enabled ? ' on' : ''}" data-plugin="${esc(p.id)}" aria-label="Turn ${esc(p.name)} ${p.enabled ? 'off' : 'on'}"></button></div>`;
+	};
+	return `<div class="about"><h2>Redesigns</h2><p class="lede">Redesigns replace Steam's interface with a new one. Turning one on or off reloads Steam's interface for a moment.</p>
+		${list.length ? list.map(item).join('') : '<div class="row"><div><b>No redesigns yet</b><p>Put the folder of a redesign (one with a <code>plugin.json</code>) in the redesigns folder.</p></div></div>'}
+		<div class="row"><div><b>Redesigns folder</b><p><code>${esc(st.pluginsDir || '')}</code></p></div><button class="btn" data-act="plugins">Open folder</button></div></div>`;
+}
+
 function aboutView(st) {
 	return `<div class="about"><h2>Settings</h2>
 		<div class="row"><div><b>Start with Windows</b><p>Beyond Steam waits in the tray and themes Steam whenever it starts.</p></div><button class="toggle" data-act="autostart" aria-label="Start with Windows"></button></div>
@@ -216,6 +234,8 @@ async function onClick(BS, e) {
 	if (el.dataset.tab) { ui.tab = el.dataset.tab; render(BS); return; }
 	if (el.dataset.act === 'close') return close();
 	if (el.dataset.act === 'folder') return appApi({ open: 'themes' });
+	if (el.dataset.act === 'plugins') return appApi({ open: 'plugins' });
+	if (el.dataset.plugin !== undefined) return BS.setPlugin(el.dataset.plugin, !el.classList.contains('on'));
 	if (el.dataset.act === 'log') return appApi({ open: 'log' });
 	if (el.dataset.act === 'reload') return BS.restartUI('options');
 	if (el.dataset.act === 'autostart') { const a = await appApi({ autostart: !el.classList.contains('on') }); el.classList.toggle('on', !!a.autostart); return; }

@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 constexpr int kDebugPort = 8080;
 constexpr int kServerPort = 37421;
-constexpr const char* kVersion = "0.2.0";
+constexpr const char* kVersion = "0.3.0";
 
 struct ThemeInfo {
 	std::string folder, name, author, description, version, preview;
@@ -36,7 +36,7 @@ public:
 	void OpenManager(); // show Steam and open the Beyond Steam window in it
 	bool Capture(); // snapshot of Steam's main window as the active theme's preview
 
-	fs::path dataDir, themesDir, webDir, steamDir;
+	fs::path dataDir, themesDir, pluginsDir, webDir, steamDir;
 	int port = 0;
 
 private:
@@ -47,6 +47,7 @@ private:
 	void EnsureBoot();
 	std::string Base() const { return "http://127.0.0.1:" + std::to_string(port); }
 	json State();
+	json ListPlugins() const;
 	json LoadConfig();
 	void SaveConfig(const json& cfg);
 	std::string Preview(const json& j, const fs::path& dir, const std::string& folder) const;
