@@ -2,6 +2,7 @@
 #include <fstream>
 #include <map>
 #include <sstream>
+#include <shellapi.h>
 #include <shlobj.h>
 #include <tlhelp32.h>
 
@@ -214,6 +215,60 @@ void App::SaveConfig(const json& cfg) {
 	fs::rename(tmp, dataDir / L"config.json", ec);
 }
 
+// A picture for the theme browser: the theme's own copy of its header image if it has one, else the web address.
+std::string App::Preview(const json& j, const fs::path& dir, const std::string& folder) const {
+	std::string img = j.value("header_image", "");
+	if (img.empty()) img = j.value("splash_image", "");
+	const std::string raw = "https://raw.githubusercontent.com/";
+	std::string rel;
+	if (img.rfind(raw, 0) == 0) { // owner/repo/branch/path
+		size_t a = img.find('/', raw.size());
+		if (a != std::string::npos) a = img.find('/', a + 1);
+		if (a != std::string::npos) a = img.find('/', a + 1);
+		if (a != std::string::npos) rel = UrlDecode(img.substr(a + 1));
+	}
+	std::error_code ec;
+	for (std::string cand : {rel, std::string("preview.png"), std::string("preview.jpg"), std::string("preview.gif"), std::string("media/header.png")}) {
+		fs::path p;
+		if (!cand.empty() && SafeJoin(dir, cand, p) && fs::exists(p, ec)) return Base() + "/themes/" + UrlEncodePath(folder) + "/" + UrlEncodePath(cand);
+	}
+	if (img.rfind("https://", 0) == 0) return img;
+	if (fs::exists(dataDir / L"previews" / (Widen(folder) + L".jpg"), ec)) return Base() + "/previews/" + UrlEncodePath(folder) + ".jpg";
+	return "";
+}
+
+// Takes a snapshot of Steam's main window wearing the active theme, as that theme's preview picture.
+bool App::Capture() {
+	auto cdp = Client();
+	std::string active = ActiveTheme();
+	if (!cdp || active.empty()) return false;
+	json r = cdp->Call("Target.getTargets", json::object(), "", 3000);
+	if (!r.contains("result")) return false;
+	// After interface reloads Steam can list old main windows too; try the newest first.
+	auto& all = r["result"]["targetInfos"];
+	for (auto it = all.rbegin(); it != all.rend(); ++it) {
+		const json& t = *it;
+		if (t.value("title", "") != "Steam" || t.value("type", "") != "page") continue;
+		json a = cdp->Call("Target.attachToTarget", {{"targetId", t["targetId"]}, {"flatten", true}}, "", 3000);
+		if (!a.contains("result")) continue;
+		std::string sid = a["result"].value("sessionId", "");
+		json m = cdp->Call("Page.getLayoutMetrics", json::object(), sid, 2000);
+		if (!m.contains("result")) { cdp->Post("Target.detachFromTarget", {{"sessionId", sid}}); continue; }
+		double w = m["result"]["cssVisualViewport"].value("clientWidth", 1280.0);
+		double h = m["result"]["cssVisualViewport"].value("clientHeight", 800.0);
+		json shot = cdp->Call("Page.captureScreenshot", {{"format", "jpeg"}, {"quality", 82}, {"clip", {{"x", 0}, {"y", 0}, {"width", w}, {"height", h}, {"scale", 640.0 / w}}}}, sid, 4000);
+		cdp->Post("Target.detachFromTarget", {{"sessionId", sid}});
+		if (!shot.contains("result")) continue;
+		std::error_code ec;
+		fs::create_directories(dataDir / L"previews", ec);
+		std::ofstream(dataDir / L"previews" / (Widen(active) + L".jpg"), std::ios::binary) << Unbase64(shot["result"].value("data", ""));
+		Log("saved a preview snapshot of " + active);
+		return true;
+	}
+	Log("snapshot failed (is Steam's window minimised?)");
+	return false;
+}
+
 std::vector<ThemeInfo> App::ListThemes() const {
 	std::vector<ThemeInfo> out;
 	std::vector<fs::path> roots = {themesDir};
@@ -234,6 +289,9 @@ std::vector<ThemeInfo> App::ListThemes() const {
 			t.author = j.value("author", "");
 			t.description = j.value("description", "");
 			t.version = j.value("version", "");
+			if (j.contains("tags") && j["tags"].is_array()) t.tags = j["tags"];
+			t.options = j.contains("Conditions") && j["Conditions"].is_object() && !j["Conditions"].empty();
+			t.preview = Preview(j, dir, t.folder);
 			out.push_back(std::move(t));
 		}
 		ec.clear();
@@ -278,6 +336,63 @@ void App::Refresh() {
 	if (cdp && !session.empty()) cdp->Post("Runtime.evaluate", {{"expression", js}}, session);
 }
 
+void App::OpenManager() {
+	ShowSteamWindow();
+	std::thread([this] {
+		Sleep(700);
+		auto cdp = Client();
+		std::string session;
+		{
+			std::lock_guard<std::mutex> lock(sjcMu_);
+			session = sjcSession_;
+		}
+		if (cdp && !session.empty()) cdp->Post("Runtime.evaluate", {{"expression", "window.__BS && window.__BS.open()"}}, session);
+	}).detach();
+}
+
+static const wchar_t* kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+// Brings Steam's main window back after an interface reload: un-minimises it, or asks Steam to show it.
+void ShowSteamWindow() {
+	struct Ctx { std::vector<DWORD> pids; bool restored = false; } ctx;
+	HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32W e{sizeof e};
+	for (BOOL ok = Process32FirstW(snap, &e); ok; ok = Process32NextW(snap, &e))
+		if (_wcsicmp(e.szExeFile, L"steamwebhelper.exe") == 0) ctx.pids.push_back(e.th32ProcessID);
+	CloseHandle(snap);
+	EnumWindows([](HWND h, LPARAM l) -> BOOL {
+		auto* c = (Ctx*)l;
+		DWORD pid = 0;
+		GetWindowThreadProcessId(h, &pid);
+		wchar_t title[64] = {};
+		GetWindowTextW(h, title, 64);
+		if (std::find(c->pids.begin(), c->pids.end(), pid) != c->pids.end() && wcscmp(title, L"Steam") == 0 && IsWindowVisible(h) && IsIconic(h)) {
+			ShowWindow(h, SW_RESTORE);
+			c->restored = true;
+		}
+		return TRUE;
+	}, (LPARAM)&ctx);
+	if (!ctx.restored) ShellExecuteW(nullptr, L"open", L"steam://open/main", nullptr, nullptr, SW_SHOWNORMAL);
+}
+
+bool AutostartOn() {
+	return RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"Beyond Steam", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
+}
+
+void SetAutostart(bool on) {
+	HKEY k;
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_SET_VALUE, &k) != ERROR_SUCCESS) return;
+	if (on) {
+		wchar_t exe[MAX_PATH];
+		GetModuleFileNameW(nullptr, exe, MAX_PATH);
+		std::wstring cmd = L"\"" + std::wstring(exe) + L"\" --background";
+		RegSetValueExW(k, L"Beyond Steam", 0, REG_SZ, (const BYTE*)cmd.c_str(), DWORD((cmd.size() + 1) * sizeof(wchar_t)));
+	} else {
+		RegDeleteValueW(k, L"Beyond Steam");
+	}
+	RegCloseKey(k);
+}
+
 json App::State() {
 	json cfg;
 	{
@@ -286,8 +401,10 @@ json App::State() {
 	}
 	auto all = ListThemes();
 	json list = json::array();
-	for (auto& t : all) list.push_back({{"folder", t.folder}, {"name", t.name}, {"author", t.author}, {"description", t.description}, {"version", t.version}});
-	json st = {{"version", kVersion}, {"accent", AccentHex()}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
+	for (auto& t : all)
+		list.push_back({{"folder", t.folder}, {"name", t.name}, {"author", t.author}, {"description", t.description}, {"version", t.version},
+			{"preview", t.preview}, {"tags", t.tags}, {"options", t.options}});
+	json st = {{"version", kVersion}, {"accent", AccentHex()}, {"themesDir", Narrow(themesDir.wstring())}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
 
 	const ThemeInfo* t = FindTheme(all, cfg.value("activeTheme", ""));
 	if (!t) return st;
@@ -345,6 +462,25 @@ HttpResponse App::Handle(const HttpRequest& req) {
 		res.body = Dump(State());
 		return res;
 	}
+	if (path == "/api/capture" && req.method == "POST") {
+		if (!req.origin.empty() && req.origin != "https://steamloopback.host") return {403, "text/plain", "forbidden"};
+		res.mime = "application/json";
+		res.body = Dump({{"ok", Capture()}});
+		return res;
+	}
+	if (path == "/api/app") {
+		if (req.method == "POST") {
+			if (!req.origin.empty() && req.origin != "https://steamloopback.host") return {403, "text/plain", "forbidden"};
+			json body = json::parse(req.body, nullptr, false);
+			if (body.is_object() && body.contains("autostart") && body["autostart"].is_boolean()) SetAutostart(body["autostart"].get<bool>());
+			if (body.is_object() && body.value("open", "") == "themes") ShellExecuteW(nullptr, L"open", themesDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+			if (body.is_object() && body.value("open", "") == "steam") ShowSteamWindow();
+			if (body.is_object() && body.value("open", "") == "log") ShellExecuteW(nullptr, L"open", (dataDir / L"log.txt").c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+		}
+		res.mime = "application/json";
+		res.body = Dump({{"version", kVersion}, {"autostart", AutostartOn()}, {"themesDir", Narrow(themesDir.wstring())}});
+		return res;
+	}
 	if (path == "/webkit.css") {
 		// Store and Community pages always link this one address; it points at the current theme's Steam-WebKit file.
 		res.mime = "text/css";
@@ -361,6 +497,7 @@ HttpResponse App::Handle(const HttpRequest& req) {
 	fs::path file;
 	bool ok = false;
 	if (path == "/boot.js") ok = SafeJoin(webDir, "boot.js", file);
+	else if (path.rfind("/previews/", 0) == 0) ok = SafeJoin(dataDir / L"previews", path.substr(10), file);
 	else if (path.rfind("/web/", 0) == 0) ok = SafeJoin(webDir, path.substr(5), file);
 	else if (path.rfind("/themes/", 0) == 0) {
 		std::string rest = path.substr(8);
@@ -381,6 +518,10 @@ void App::ConnectionLoop() {
 	for (;;) {
 		auto cdp = std::make_shared<Cdp>();
 		if (!cdp->Connect(kDebugPort)) {
+			// Steam opens its debug port at start-up only while this file is in its folder; something may remove it.
+			std::error_code ec;
+			fs::path flag = steamDir / L".cef-enable-remote-debugging";
+			if (!steamDir.empty() && !fs::exists(flag, ec)) std::ofstream(flag).flush();
 			status_ = SteamRunning() ? Status::NeedsRestart : Status::NoSteam;
 			Sleep(1500);
 			continue;

@@ -11,31 +11,7 @@ static bool g_toldRestart = false;
 static std::atomic<bool> g_busy{false};
 
 constexpr UINT WM_TRAY = WM_APP + 1;
-enum : UINT { ID_STATUS = 1, ID_RESTART, ID_FOLDER, ID_LOG, ID_AUTOSTART, ID_MILL_OFF, ID_MILL_ON, ID_QUIT, ID_NONE = 100, ID_THEME = 101 };
-
-static const wchar_t* kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-
-static fs::path ExePath() {
-	wchar_t p[MAX_PATH];
-	GetModuleFileNameW(nullptr, p, MAX_PATH);
-	return p;
-}
-
-static bool AutostartOn() {
-	return RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"Beyond Steam", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
-}
-
-static void SetAutostart(bool on) {
-	HKEY k;
-	if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_SET_VALUE, &k) != ERROR_SUCCESS) return;
-	if (on) {
-		std::wstring cmd = L"\"" + ExePath().wstring() + L"\" --background";
-		RegSetValueExW(k, L"Beyond Steam", 0, REG_SZ, (const BYTE*)cmd.c_str(), DWORD((cmd.size() + 1) * sizeof(wchar_t)));
-	} else {
-		RegDeleteValueW(k, L"Beyond Steam");
-	}
-	RegCloseKey(k);
-}
+enum : UINT { ID_OPEN = 50, ID_STATUS = 1, ID_RESTART, ID_FOLDER, ID_LOG, ID_AUTOSTART, ID_MILL_OFF, ID_MILL_ON, ID_QUIT, ID_NONE = 100, ID_THEME = 101 };
 
 static bool ProcessRunning(const wchar_t* name) {
 	HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -100,6 +76,8 @@ static void ShowMenu() {
 	std::wstring head = std::wstring(L"Beyond Steam ") + Widen(kVersion) + L" — " + StatusText();
 	AppendMenuW(menu, MF_STRING | MF_GRAYED, ID_STATUS, head.c_str());
 	AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+	AppendMenuW(menu, MF_STRING | (g_app->GetStatus() == Status::Connected ? 0 : MF_GRAYED), ID_OPEN, L"Open Beyond Steam in Steam");
+	SetMenuDefaultItem(menu, ID_OPEN, FALSE);
 
 	g_menuThemes = g_app->ListThemes();
 	std::string active = g_app->ActiveTheme();
@@ -128,7 +106,8 @@ static void ShowMenu() {
 	UINT cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, g_wnd, nullptr);
 	DestroyMenu(menu);
 
-	if (cmd == ID_NONE) g_app->SetActiveTheme("");
+	if (cmd == ID_OPEN) g_app->OpenManager();
+	else if (cmd == ID_NONE) g_app->SetActiveTheme("");
 	else if (cmd >= ID_THEME && cmd < ID_THEME + g_menuThemes.size()) g_app->SetActiveTheme(g_menuThemes[cmd - ID_THEME].folder);
 	else if (cmd == ID_RESTART) RestartSteam();
 	else if (cmd == ID_FOLDER) ShellExecuteW(nullptr, L"open", g_app->themesDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -140,7 +119,11 @@ static void ShowMenu() {
 }
 
 static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
-	if (m == WM_TRAY && (LOWORD(l) == WM_RBUTTONUP || LOWORD(l) == WM_LBUTTONUP)) { ShowMenu(); return 0; }
+	if (m == WM_TRAY && LOWORD(l) == WM_RBUTTONUP) { ShowMenu(); return 0; }
+	if (m == WM_TRAY && LOWORD(l) == WM_LBUTTONUP) { // left click: open the manager in Steam, or the menu if Steam isn't ready
+		if (g_app->GetStatus() == Status::Connected) g_app->OpenManager(); else ShowMenu();
+		return 0;
+	}
 	if (m == WM_TIMER) {
 		std::wstring tip = std::wstring(L"Beyond Steam — ") + StatusText();
 		wcsncpy_s(g_nid.szTip, tip.c_str(), _TRUNCATE);

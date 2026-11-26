@@ -19,7 +19,49 @@
 		['.ModalDialogPopup', 'libraryroot'], ['.FullModalOverlay', 'libraryroot'],
 	].map(([m, f]) => ({ MatchRegexString: m, TargetCss: f + '.custom.css', TargetJs: f + '.custom.js' }));
 
-	const BS = (window.__BS = { version: '0.1.0', state: null, api, refresh, setTheme, setCondition, popups: () => popups() });
+	const BS = (window.__BS = { version: '0.2.0', host: HOST, state: null, api, refresh, setTheme, setCondition, open, restartUI, popups: () => popups() });
+
+	// The Beyond Steam window (web/manager.js), loaded the first time it is opened.
+	let manager = null;
+	async function open(tab) {
+		manager ??= await import(HOST + '/web/manager.js');
+		return manager.open(BS, tab);
+	}
+
+	// Reloads Steam's interface (needed to drop a theme's scripts) and reopens the Beyond Steam window afterwards.
+	function restartUI(reopenTab) {
+		try { if (reopenTab) localStorage.setItem('beyondsteam.reopen', reopenTab); } catch {}
+		SteamClient.Browser.RestartJSContext();
+	}
+
+	const BUTTON_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M3.2 15.5C1.6 11 6 5.2 12.6 3.6c4.3-1 7.6.3 8.4 2.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20.8 8.5c1.6 4.5-2.8 10.3-9.4 11.9-4.3 1-7.6-.3-8.4-2.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>';
+
+	// A Beyond Steam button beside Steam's own title-bar buttons, styled like them; Ctrl+Shift+B opens the window too.
+	function decorateMain(win) {
+		const doc = win.document;
+		if (!doc.documentElement.dataset.bsKeys) {
+			doc.documentElement.dataset.bsKeys = '1';
+			win.addEventListener('keydown', (e) => {
+				if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyB') { e.preventDefault(); e.stopPropagation(); open(); }
+			}, true);
+		}
+		const bar = doc.querySelector('.TitleBarControls');
+		if (!bar || bar.querySelector('.beyondsteam-button')) return;
+		const sample = bar.querySelector('.Button');
+		const wrap = doc.createElement('div');
+		wrap.className = 'tool-tip-source Focusable beyondsteam-button';
+		const btn = doc.createElement('div');
+		btn.className = (sample ? sample.className.split(' ').filter((c) => !/Announcements|Active|Notification|Friends|Account|Badge/i.test(c)).join(' ') : 'Button');
+		btn.title = 'Beyond Steam';
+		btn.setAttribute('role', 'button');
+		btn.tabIndex = 0;
+		btn.style.cssText = 'display:flex;align-items:center;justify-content:center;min-width:32px;';
+		btn.innerHTML = BUTTON_ICON;
+		btn.addEventListener('click', () => open());
+		btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+		wrap.appendChild(btn);
+		bar.insertBefore(wrap, bar.firstChild);
+	}
 
 	const fileUrl = (rel) => HOST + '/themes/' + encodeURIComponent(BS.state.active) + '/' + String(rel).split('/').map(encodeURIComponent).join('/');
 	const list = (v) => (v === undefined || v === null ? [] : Array.isArray(v) ? v : [v]);
@@ -68,6 +110,7 @@
 		doc.querySelectorAll('[data-bs]').forEach((e) => e.remove()); // styles only; theme scripts cannot be taken back
 		doc.documentElement.classList.add('BeyondSteam');
 		breadcrumbs(p, doc);
+		if (p.m_strName === 'SP Desktop_uid0') decorateMain(win);
 		const st = BS.state;
 		if (!st?.theme) return true;
 
@@ -121,11 +164,26 @@
 	}
 
 	// A theme's scripts cannot be unloaded, so leaving a theme that ran any reloads Steam's interface (a second or two).
+	// A theme without a picture gets a snapshot of Steam wearing it (the Beyond Steam window is hidden meanwhile).
+	async function maybeCapture() {
+		const st = BS.state, t = st?.themes?.find((x) => x.folder === st.active);
+		if (!t || t.preview) return;
+		await sleep(3000);
+		const main = () => g_PopupManager.GetExistingPopup('SP Desktop_uid0')?.m_popup?.window;
+		for (let i = 0; i < 20 && main()?.document.hidden; i++) await sleep(500); // only a visible window can be photographed
+		if (BS.state?.active !== t.folder || !main() || main().document.hidden) return;
+		const host = g_PopupManager.GetExistingPopup('SP Desktop_uid0')?.m_popup?.window?.document.getElementById('beyondsteam-manager');
+		if (host) host.style.visibility = 'hidden';
+		try { await api('capture', {}); } finally { if (host) host.style.visibility = ''; }
+		await refresh();
+	}
+
 	async function setTheme(folder) {
 		const ranScripts = popups().some((p) => (p.m_popup?.window || p.window)?.document?.querySelector('script[data-bs-theme]'));
 		BS.state = await api('set', { active: folder });
-		if (ranScripts) return SteamClient.Browser.RestartJSContext();
+		if (ranScripts) return restartUI(manager?.isOpen() ? 'themes' : null);
 		popups().forEach(patchSoon);
+		maybeCapture();
 	}
 
 	async function setCondition(name, value) {
@@ -139,5 +197,18 @@
 		g_PopupManager.AddPopupCreatedCallback((p) => patchSoon(p));
 		popups().forEach(patchSoon);
 		console.log('[Beyond Steam] ready, theme:', BS.state?.active || '(none)');
+		// Keep the title-bar button in place if Steam redraws its title bar.
+		setInterval(() => { const w = g_PopupManager.GetExistingPopup('SP Desktop_uid0')?.m_popup?.window; if (w) decorateMain(w); }, 2000);
+		let reopen = null;
+		try { reopen = localStorage.getItem('beyondsteam.reopen'); localStorage.removeItem('beyondsteam.reopen'); } catch {}
+		if (reopen) {
+			// Steam keeps its window hidden after a reload if it was started minimised; bring it back first.
+			for (let i = 0; i < 50 && !g_PopupManager.GetExistingPopup('SP Desktop_uid0'); i++) await sleep(100);
+			const w = g_PopupManager.GetExistingPopup('SP Desktop_uid0')?.m_popup;
+			try { w?.SteamClient.Window.ShowWindow(); w?.SteamClient.Window.BringToFront(); } catch {}
+			api('app', { open: 'steam' }).catch(() => {}); // un-minimise, or show if Steam still keeps it hidden
+			for (let i = 0; i < 100; i++) { if (await open(reopen)) break; await sleep(100); }
+			maybeCapture();
+		}
 	})();
 })();

@@ -12,10 +12,12 @@ namespace fs = std::filesystem;
 
 constexpr int kDebugPort = 8080;
 constexpr int kServerPort = 37421;
-constexpr const char* kVersion = "0.1.0";
+constexpr const char* kVersion = "0.2.0";
 
 struct ThemeInfo {
-	std::string folder, name, author, description, version;
+	std::string folder, name, author, description, version, preview;
+	json tags = json::array();
+	bool options = false;
 	fs::path dir;
 };
 
@@ -31,6 +33,8 @@ public:
 	std::string ActiveTheme();
 	void SetActiveTheme(const std::string& folder); // "" = Steam's own look
 	void Refresh(); // tell the in-Steam script to re-read settings
+	void OpenManager(); // show Steam and open the Beyond Steam window in it
+	bool Capture(); // snapshot of Steam's main window as the active theme's preview
 
 	fs::path dataDir, themesDir, webDir, steamDir;
 	int port = 0;
@@ -45,6 +49,7 @@ private:
 	json State();
 	json LoadConfig();
 	void SaveConfig(const json& cfg);
+	std::string Preview(const json& j, const fs::path& dir, const std::string& folder) const;
 	const ThemeInfo* FindTheme(const std::vector<ThemeInfo>& all, const std::string& folder) const;
 
 	std::shared_ptr<Cdp> Client();
@@ -57,3 +62,6 @@ private:
 };
 
 void Log(const std::string& line);
+bool AutostartOn();
+void ShowSteamWindow();
+void SetAutostart(bool on);

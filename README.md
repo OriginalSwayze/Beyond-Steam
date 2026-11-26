@@ -2,14 +2,19 @@
 
 Themes and full redesigns for the Steam desktop client, with no setup beyond running one program.
 
-> Early work in progress (0.1). Not released yet.
+> Early work in progress (0.2). Not released yet.
 
 ## What it does
 
 - **Themes.** Applies a theme to Steam's main window, menus, dialogs, friends list, notifications, and the Store and Community pages.
   - Themes use the common `skin.json` format: patches, options and colour files. Themes made for Millennium work as they are.
 - **Your settings carry over.** On first run it imports the theme and theme options you chose in Millennium, if you used it.
-- **Theme switching.** Switch themes from the tray icon. If the previous theme ran scripts, Steam reloads its interface so nothing is left behind.
+- **A window inside Steam.** Open it from the Beyond Steam button in Steam's title bar, with Ctrl+Shift+B, or by clicking the tray icon.
+  - **Themes:** browse all themes with previews and search, and switch with one click.
+  - **Theme options:** the active theme's options, grouped the way the theme groups them, applied instantly.
+  - **Settings:** start with Windows, the themes folder, the log.
+- **Previews fill themselves in.** A theme without a preview picture gets a snapshot of Steam wearing it the first time you use it.
+- **Theme switching.** If the previous theme ran scripts, Steam reloads its interface so nothing is left behind.
 - **No changes to Steam's files.** It doesn't touch Steam's program files.
   - It only adds Steam's own `.cef-enable-remote-debugging` switch file, which tells Steam to open its built-in debug port.
   - Beyond Steam talks to Steam through that port.
