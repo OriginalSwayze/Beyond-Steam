@@ -2,11 +2,13 @@
 
 Themes and full redesigns for the Steam desktop client, with no setup beyond running one program.
 
-> Early work in progress (0.4). Not released yet.
+> Early release (0.4).
 
 ## Install
 
-Download `BeyondSteam.exe` and run it.
+Download `BeyondSteam.exe` from the [latest release](https://github.com/OriginalSwayze/Beyond-Steam/releases/latest) and run it.
+
+- Windows may say it protected your PC, because the program isn't code-signed. Click **More info**, then **Run anyway**.
 
 - It installs for your Windows account only (no administrator rights) and starts with Windows.
 - If Millennium is installed it offers to turn it off. Your Millennium themes and settings carry over.
@@ -51,6 +53,18 @@ You need Visual Studio 2026 with the C++ workload, which includes CMake and Ninj
 ## About the code
 
 This project is written with AI assistance (Claude), directed and tested by OriginalSwayze.
+
+## Changes
+
+### 0.4.0
+
+First public release.
+
+- **Themes:** applies any `skin.json` theme, including themes made for Millennium, with its options, to Steam's windows, menus and the Store and Community pages.
+- **A window inside Steam:** Themes, Theme options, Redesigns, Get more and Settings. Open it with Ctrl+Shift+B, the title-bar button or the tray icon.
+- **Redesigns:** add-ons that replace Steam's interface, such as Playbox. Steam's React is made available to them.
+- **Get more:** a catalog of themes and redesigns, installed and updated with one click.
+- **One-file installer:** installs for your Windows account without administrator rights, carries your Millennium settings over, and uninstalls from Settings > Apps.
 
 ## License
 

@@ -9,6 +9,7 @@ $prev = Join-Path $out 'previews'
 New-Item -ItemType Directory -Force $prev | Out-Null
 $owner = 'OriginalSwayze'
 $steamThemes = 'C:\Program Files (x86)\Steam\millennium\themes'
+$sib = Split-Path $root -Parent # the Playbox (Kestrel) and Playbox-Theme repos sit beside this one
 
 # A 480px-wide still JPEG from the first frame of a theme's own header picture.
 function Save-Thumb($src, $dst) {
@@ -48,11 +49,11 @@ foreach ($d in Get-ChildItem $steamThemes -Directory) {
 	if ($t) { $items += $t }
 }
 # The Playbox theme installs as "Kestrel", the folder name the Playbox redesign asks for.
-$items += Add-Theme 'C:\Users\fgvew\OneDrive\Desktop\Playbox-Theme' 'Kestrel'
+$items += Add-Theme (Join-Path $sib 'Playbox-Theme') 'Kestrel'
 
-$pb = Get-Content 'C:\Users\fgvew\OneDrive\Desktop\Kestrel\millennium.toml' -Raw
+$pb = Get-Content (Join-Path $sib 'Kestrel\millennium.toml') -Raw
 $ver = [regex]::Match($pb, '(?m)^version\s*=\s*"(.*)"').Groups[1].Value
-Copy-Item 'C:\Users\fgvew\OneDrive\Desktop\Playbox-Theme\media\header.png' (Join-Path $prev 'playbox.png') -Force
+Copy-Item (Join-Path $sib 'Playbox-Theme\media\header.png') (Join-Path $prev 'playbox.png') -Force
 $items += [ordered]@{
 	id = 'com.originalswayze.kestrel'; kind = 'redesign'; name = 'Playbox'; author = $owner; version = $ver
 	description = '163 complete interfaces for Steam in one box: game launchers, game-menu worlds and more, switchable from a button in every top strip.'
