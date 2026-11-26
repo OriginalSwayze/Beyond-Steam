@@ -39,6 +39,7 @@ function Add-Theme($dir, $id) {
 	[ordered]@{
 		id = $id; kind = 'theme'; name = $j.name; author = $j.author; description = $j.description; version = "$($j.version)"
 		repo = "$owner/$($j.github.repo_name)"; branch = 'main'; preview = $thumb
+		zip = "https://github.com/$owner/$($j.github.repo_name)/releases/latest/download/$($j.github.repo_name).zip"
 	}
 }
 
@@ -57,7 +58,7 @@ Copy-Item (Join-Path $sib 'Playbox-Theme\media\header.png') (Join-Path $prev 'pl
 $items += [ordered]@{
 	id = 'com.originalswayze.kestrel'; kind = 'redesign'; name = 'Playbox'; author = $owner; version = $ver
 	description = '163 complete interfaces for Steam in one box: game launchers, game-menu worlds and more, switchable from a button in every top strip.'
-	zip = 'https://github.com/OriginalSwayze/Playbox/releases/latest/download/Playbox-BeyondSteam.zip'; theme = 'Kestrel'; preview = 'previews/playbox.png'
+	zip = 'https://github.com/OriginalSwayze/Playbox/releases/latest/download/Playbox-BeyondSteam.zip'; repo = 'OriginalSwayze/Playbox'; theme = 'Kestrel'; preview = 'previews/playbox.png'
 }
 
 $catalog = [ordered]@{ version = 1; updated = (Get-Date -Format 'yyyy-MM-dd'); items = $items }

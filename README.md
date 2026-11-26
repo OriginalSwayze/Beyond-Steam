@@ -2,7 +2,7 @@
 
 Themes and full redesigns for the Steam desktop client, with no setup beyond running one program.
 
-> Early release (0.4).
+> Early release (0.5).
 
 ## Install
 
@@ -20,15 +20,23 @@ Download `BeyondSteam.exe` from the [latest release](https://github.com/Original
 - **Themes.** Applies a theme to Steam's main window, menus, dialogs, friends list, notifications, and the Store and Community pages.
   - Themes use the common `skin.json` format: patches, options and colour files. Themes made for Millennium work as they are.
 - **Your settings carry over.** On first run it imports the theme and theme options you chose in Millennium, if you used it.
-- **A window inside Steam.** Open it from the Beyond Steam button in Steam's title bar, with Ctrl+Shift+B, or by clicking the tray icon.
-  - **Themes:** browse all themes with previews and search, and switch with one click.
-  - **Theme options:** the active theme's options, grouped the way the theme groups them, applied instantly.
-  - **Settings:** start with Windows, the themes folder, the log.
-- **Redesigns.** Add-ons that replace Steam's interface with a new one, such as [Playbox](https://github.com/OriginalSwayze/Playbox). Turn them on and off under Redesigns.
-  - A redesign is a folder with a `plugin.json` (`id`, `name`, `main`, and optionally `theme`, its companion theme) in `%APPDATA%Beyond Steamplugins`.
-  - Its `main` script's default export runs inside Steam's interface. Steam's React is available as `window.SP_REACT`, `SP_REACTDOM` and `SP_JSX_FACTORY`, as under Millennium.
-  - Redesigns that were on in Millennium start out on.
-- **Get more.** A catalog of themes and redesigns, installed and updated with one click. The list lives in [catalog/catalog.json](catalog/catalog.json); `tools/make-catalog.ps1` rebuilds it.
+- **A window inside Steam.** Open it with Ctrl+Shift+B, the Beyond Steam button in Steam's title bar, or the tray icon.
+  - **Themes:** browse with previews and search, star favourites, and switch with one click.
+  - **Theme options:** the active theme's own options, applied instantly.
+  - **Personalize:** your accent colour, font and zoom; seven one-click tweaks (hide the Store tab, clean library home, no animations and more); and your own CSS for every theme or just one.
+  - **Redesigns:** add-ons that replace Steam's interface, such as [Playbox](https://github.com/OriginalSwayze/Playbox).
+  - **Get more:** the catalog, ranked by installs or GitHub stars, with one-click install, update and Update all.
+  - **Extras:** a random game picker, your playtime, and installed games by disk space.
+  - **Settings:** start with Windows, a theme schedule (follow Windows light/dark, or a random favourite at each start), safe mode, backup and restore, updates, and tools for theme makers.
+- **Safe mode.** Switches your theme and redesigns off without forgetting them. Press Ctrl+Shift+Alt+B, or let Beyond Steam turn it on by itself if Steam's interface keeps crashing while it starts.
+- **Updates itself.** Beyond Steam checks its GitHub releases and updates with one click.
+- **For theme makers.**
+  - **Live reload:** save a file and Steam updates.
+  - **Inspector:** point at anything to get a selector.
+  - **New-theme wizard:** starts a theme folder from your colours and font.
+  - **Redesign guide:** [docs/REDESIGNS.md](docs/REDESIGNS.md).
+- **Redesigns.** A redesign is a folder with a `plugin.json` in `%APPDATA%\Beyond Steam\plugins`. Steam's React is available to it as under Millennium.
+- **Get your work listed.** See [catalog/README.md](catalog/README.md).
 - **Stands aside for Millennium.** If Millennium is running in Steam, Beyond Steam pauses instead of theming Steam twice.
 - **Previews fill themselves in.** A theme without a preview picture gets a snapshot of Steam wearing it the first time you use it.
 - **Theme switching.** If the previous theme ran scripts, Steam reloads its interface so nothing is left behind.
@@ -55,6 +63,19 @@ You need Visual Studio 2026 with the C++ workload, which includes CMake and Ninj
 This project is written with AI assistance (Claude), directed and tested by OriginalSwayze.
 
 ## Changes
+
+### 0.5.0
+
+- **Get more:** rankings by installs, GitHub stars or last update, with daily stats; search; update badges and Update all. Themes now install from small release zips, so installs are counted.
+- **Personalize tab:** accent colour, font, zoom, seven tweaks and your own CSS.
+- **Extras tab:** random game picker, playtime summary, and disk space with uninstall.
+- **Favourites:** Ctrl+Shift+T switches to the next one, and the theme schedule follows Windows light/dark or picks a random favourite at each start.
+- **Safe mode:** a panic key, and Beyond Steam turns it on by itself if the interface keeps crashing while it starts.
+- **Self-updates** from GitHub releases.
+- **Backup and restore.**
+- **For theme makers:** live reload, the Inspector and the new-theme wizard.
+- **Guides:** for making redesigns, and for getting listed in the catalog.
+- **Fixed:** keyboard shortcuts stopped working after Steam reloaded its interface.
 
 ### 0.4.0
 

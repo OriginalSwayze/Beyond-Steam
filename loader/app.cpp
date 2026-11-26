@@ -245,8 +245,8 @@ std::string App::Preview(const json& j, const fs::path& dir, const std::string& 
 		fs::path p;
 		if (!cand.empty() && SafeJoin(dir, cand, p) && fs::exists(p, ec)) return Base() + "/themes/" + UrlEncodePath(folder) + "/" + UrlEncodePath(cand);
 	}
-	if (img.rfind("https://", 0) == 0) return img;
 	if (fs::exists(dataDir / L"previews" / (Widen(folder) + L".jpg"), ec)) return Base() + "/previews/" + UrlEncodePath(folder) + ".jpg";
+	if (img.rfind("https://", 0) == 0) return img;
 	return "";
 }
 
@@ -440,7 +440,8 @@ json App::State() {
 		if (cfg.contains("plugins") && cfg["plugins"].is_array())
 			for (auto& e : cfg["plugins"]) if (e.is_string() && e.get<std::string>() == p["id"].get<std::string>()) p["enabled"] = true;
 	}
-	json st = {{"version", kVersion}, {"accent", AccentHex()}, {"themesDir", Narrow(themesDir.wstring())}, {"pluginsDir", Narrow(pluginsDir.wstring())}, {"plugins", plugins}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
+	json st = {{"version", kVersion}, {"safe", cfg.value("safe", false)}, {"safeReason", cfg.value("safeReason", "")},
+		{"prefs", cfg.value("prefs", json::object())}, {"update", UpdateInfo()}, {"dev", DevBuild()}, {"accent", AccentHex()}, {"themesDir", Narrow(themesDir.wstring())}, {"pluginsDir", Narrow(pluginsDir.wstring())}, {"plugins", plugins}, {"themes", list}, {"active", ""}, {"theme", nullptr}, {"conditions", json::object()}, {"rootColors", ""}};
 
 	const ThemeInfo* t = FindTheme(all, cfg.value("activeTheme", ""));
 	if (!t) return st;
@@ -486,7 +487,10 @@ HttpResponse App::Handle(const HttpRequest& req) {
 		if (body.is_object()) {
 			std::lock_guard<std::mutex> lock(cfgMu_);
 			json cfg = LoadConfig();
-			if (body.contains("active") && body["active"].is_string()) cfg["activeTheme"] = body["active"];
+			if (body.contains("active") && body["active"].is_string()) {
+				cfg["activeTheme"] = body["active"];
+				Log("theme set to '" + body["active"].get<std::string>() + "' from Steam");
+			}
 			if (body.contains("plugin") && body["plugin"].is_object() && body["plugin"].contains("id")) {
 				json list = json::array();
 				std::string id = body["plugin"].value("id", "");
@@ -505,6 +509,59 @@ HttpResponse App::Handle(const HttpRequest& req) {
 		res.mime = "application/json";
 		res.body = Dump(State());
 		return res;
+	}
+	const bool steamOrigin = req.origin.empty() || req.origin == "https://steamloopback.host";
+	if (path == "/api/booted" && req.method == "POST") { NoteBoot(false); return {200, "application/json", "{}"}; }
+	if (path == "/api/ready" && req.method == "POST") { NoteBoot(true); return {200, "application/json", "{}"}; }
+	if (path == "/api/log" && req.method == "POST") { // short notes from the in-Steam script, for the log
+		json body = json::parse(req.body, nullptr, false);
+		if (body.is_object()) Log("[Steam] " + body.value("text", std::string()).substr(0, 300));
+		return {200, "application/json", "{}"};
+	}
+	if (path == "/api/prefs") {
+		if (req.method == "POST") {
+			if (!steamOrigin) return {403, "text/plain", "forbidden"};
+			json body = json::parse(req.body, nullptr, false);
+			if (body.is_object()) SetPrefs(body);
+		}
+		return {200, "application/json", Dump(Prefs())};
+	}
+	if (path == "/api/safe" && req.method == "POST") {
+		if (!steamOrigin) return {403, "text/plain", "forbidden"};
+		json body = json::parse(req.body, nullptr, false);
+		bool on = body.is_object() && body.value("on", false);
+		{
+			std::lock_guard<std::mutex> lock(cfgMu_);
+			json cfg = LoadConfig();
+			cfg["safe"] = on;
+			cfg["safeReason"] = on ? body.value("reason", std::string("You turned on safe mode.")) : "";
+			SaveConfig(cfg);
+		}
+		Log(on ? "safe mode on (from Steam)" : "safe mode off (from Steam)");
+		return {200, "application/json", Dump(State())};
+	}
+	if (path == "/api/update" && req.method == "POST") {
+		if (!steamOrigin) return {403, "text/plain", "forbidden"};
+		std::string err = InstallUpdate();
+		return {200, "application/json", Dump({{"ok", err.empty()}, {"error", err}})};
+	}
+	if (path == "/api/backup" && req.method == "POST") {
+		if (!steamOrigin) return {403, "text/plain", "forbidden"};
+		json body = json::parse(req.body, nullptr, false);
+		return {200, "application/json", Dump(Backup(body.is_object() && body.value("action", "") == "export"))};
+	}
+	if (path == "/api/newtheme" && req.method == "POST") {
+		if (!steamOrigin) return {403, "text/plain", "forbidden"};
+		json body = json::parse(req.body, nullptr, false);
+		std::string folder, err = body.is_object() ? NewTheme(body, folder) : "Bad request.";
+		if (err.empty()) {
+			std::lock_guard<std::mutex> lock(cfgMu_);
+			json cfg = LoadConfig();
+			cfg["activeTheme"] = folder;
+			SaveConfig(cfg);
+		}
+		if (err.empty()) ShellExecuteW(nullptr, L"open", (themesDir / Widen(folder)).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+		return {200, "application/json", Dump({{"ok", err.empty()}, {"error", err}, {"folder", folder}, {"state", State()}})};
 	}
 	if (path == "/api/catalog") {
 		res.mime = "application/json";
@@ -546,7 +603,7 @@ HttpResponse App::Handle(const HttpRequest& req) {
 		// Store and Community pages always link this one address; it points at the current theme's Steam-WebKit file.
 		res.mime = "text/css";
 		json st = State();
-		if (!st["theme"].is_null()) {
+		if (!st["theme"].is_null() && !st.value("safe", false)) {
 			const json& data = st["theme"]["data"];
 			if (data.contains("Steam-WebKit") && data["Steam-WebKit"].is_string())
 				res.body = "@import url(\"/themes/" + UrlEncodePath(st["active"].get<std::string>()) + "/" + UrlEncodePath(data["Steam-WebKit"].get<std::string>()) + "\");\n" +
@@ -786,7 +843,7 @@ static const char* kCatalogBase = "https://raw.githubusercontent.com/OriginalSwa
 // else the copy built into the .exe when offline.
 json App::Catalog() {
 	std::lock_guard<std::mutex> lock(catMu_);
-	if (catalog_.is_object() && GetTickCount64() - catalogAt_ < 10 * 60 * 1000) return {{"base", catalogBase_}, {"items", catalog_["items"]}, {"offline", false}};
+	if (catalog_.is_object() && GetTickCount64() - catalogAt_ < 10 * 60 * 1000) return {{"base", catalogBase_}, {"items", catalog_["items"]}, {"stats", catalog_.value("stats", json::object())}, {"offline", false}};
 	std::string body, err;
 	json c;
 	bool offline = false;
@@ -804,9 +861,13 @@ json App::Catalog() {
 		Log("catalog: using the built-in copy (" + (err.empty() ? std::string("unreadable") : err) + ")");
 	}
 	if (!c.is_object() || !c.contains("items")) c = {{"items", json::array()}};
+	// Rankings: stars, installs and last update, refreshed daily on GitHub (catalog/stats.json).
+	std::string stats;
+	if (!offline && !webDir.empty() && ReadFile(webDir.parent_path() / L"catalog" / L"stats.json", stats)) c["stats"] = json::parse(stats, nullptr, false);
+	else if (!offline && HttpsGet(std::string(kCatalogBase) + "stats.json", stats, err, 4u << 20)) c["stats"] = json::parse(stats, nullptr, false);
 	catalog_ = c;
 	catalogAt_ = offline ? 0 : GetTickCount64();
-	return {{"base", catalogBase_}, {"items", c["items"]}, {"offline", offline}};
+	return {{"base", catalogBase_}, {"items", c["items"]}, {"stats", c.value("stats", json::object())}, {"offline", offline}};
 }
 
 static bool RunHidden(const std::wstring& cmd, DWORD timeoutMs) {
@@ -872,6 +933,15 @@ std::string App::Install(const std::string& id) {
 	if (ec) { std::error_code e2; fs::rename(old, dest, e2); fs::remove_all(tmp, e2); return "Couldn't put the files in place (is a file open?)."; }
 	fs::remove_all(old, ec);
 	fs::remove_all(tmp, ec);
+	// Keep the catalog's small preview picture, so the Themes tab doesn't load a large web image.
+	std::string pv = item.value("preview", ""), pic;
+	if (theme && !pv.empty()) {
+		std::string pvUrl = pv.rfind("https://", 0) == 0 ? pv : cat.value("base", std::string("")) + pv;
+		if (pvUrl.rfind("https://", 0) == 0 && HttpsGet(pvUrl, pic, err, 4u << 20)) {
+			fs::create_directories(dataDir / L"previews", ec);
+			std::ofstream(dataDir / L"previews" / (Widen(id) + L".jpg"), std::ios::binary) << pic;
+		}
+	}
 	Log("installed " + id);
 	return "";
 }

@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 constexpr int kDebugPort = 8080;
 constexpr int kServerPort = 37421;
-constexpr const char* kVersion = "0.4.0";
+constexpr const char* kVersion = "0.5.0";
 
 struct ThemeInfo {
 	std::string folder, name, author, description, version, preview;
@@ -35,6 +35,14 @@ public:
 	void SetActiveTheme(const std::string& folder); // "" = Steam's own look
 	void Refresh(); // tell the in-Steam script to re-read settings
 	void OpenManager(); // show Steam and open the Beyond Steam window in it
+	// 0.5 (features.cpp)
+	void Housekeeping(); // runs forever: update checks, light/dark schedule, live reload
+	json UpdateInfo();
+	std::string InstallUpdate();
+	void SetSafe(bool on, const std::string& reason);
+	bool Safe() { std::lock_guard<std::mutex> lock(cfgMu_); return LoadConfig().value("safe", false); }
+	void RestartInterface();
+	bool DevBuild() const;
 	bool Capture(); // snapshot of Steam's main window as the active theme's preview
 
 	fs::path dataDir, themesDir, pluginsDir, webDir, steamDir;
@@ -49,6 +57,19 @@ private:
 	std::string Base() const { return "http://127.0.0.1:" + std::to_string(port); }
 	json State();
 	json ListPlugins() const;
+	void CheckForUpdate();
+	void NoteBoot(bool ready);
+	json Prefs();
+	json SetPrefs(const json& patch);
+	void ScheduleTick();
+	void LiveReloadTick();
+	json Backup(bool exporting);
+	std::string NewTheme(const json& req, std::string& folderOut);
+	std::mutex updMu_;
+	json update_;
+	std::vector<unsigned long long> boots_;
+	int lastLight_ = -1;
+	unsigned long long liveStamp_ = 0;
 	json Catalog(); // {base, items, offline}
 	std::string Install(const std::string& id); // "" on success, else why not
 	void Remove(const std::string& kind, const std::string& id);

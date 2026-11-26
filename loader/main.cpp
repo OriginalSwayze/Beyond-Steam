@@ -14,9 +14,9 @@ constexpr UINT WM_TRAY = WM_APP + 1;
 constexpr UINT WM_SHOW_MANAGER = WM_APP + 2; // sent by a second copy started from the Start menu
 
 bool ShouldRunSetup();
-int RunSetup();
+int RunSetup(bool silentUpdate);
 int RunUninstall();
-enum : UINT { ID_OPEN = 50, ID_STATUS = 1, ID_RESTART, ID_FOLDER, ID_LOG, ID_AUTOSTART, ID_MILL_OFF, ID_MILL_ON, ID_QUIT, ID_NONE = 100, ID_THEME = 101 };
+enum : UINT { ID_UPDATE = 51, ID_SAFE = 52, ID_OPEN = 50, ID_STATUS = 1, ID_RESTART, ID_FOLDER, ID_LOG, ID_AUTOSTART, ID_MILL_OFF, ID_MILL_ON, ID_QUIT, ID_NONE = 100, ID_THEME = 101 };
 
 static bool ProcessRunning(const wchar_t* name) {
 	HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -97,6 +97,9 @@ static void ShowMenu() {
 	InsertMenuW(themes, 1, MF_BYPOSITION | MF_SEPARATOR, 0, nullptr);
 	AppendMenuW(menu, MF_POPUP, (UINT_PTR)themes, L"Theme");
 	AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+	json upd = g_app->UpdateInfo();
+	if (upd.is_object()) AppendMenuW(menu, MF_STRING, ID_UPDATE, (L"Update to Beyond Steam " + Widen(upd.value("version", ""))).c_str());
+	AppendMenuW(menu, MF_STRING | (g_app->Safe() ? MF_CHECKED : 0), ID_SAFE, L"Safe mode (theme and redesigns off)");
 	AppendMenuW(menu, MF_STRING | (g_busy ? MF_GRAYED : 0), ID_RESTART, L"Restart Steam");
 	AppendMenuW(menu, MF_STRING, ID_FOLDER, L"Open themes folder");
 	AppendMenuW(menu, MF_STRING, ID_LOG, L"Open log");
@@ -112,7 +115,11 @@ static void ShowMenu() {
 	UINT cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, g_wnd, nullptr);
 	DestroyMenu(menu);
 
-	if (cmd == ID_OPEN) g_app->OpenManager();
+	if (cmd == ID_UPDATE) {
+		std::thread([] { std::string e = g_app->InstallUpdate(); if (!e.empty()) MessageBoxW(nullptr, Widen(e).c_str(), L"Beyond Steam", MB_OK | MB_ICONWARNING); }).detach();
+	}
+	else if (cmd == ID_SAFE) g_app->SetSafe(!g_app->Safe(), "You turned on safe mode from the tray.");
+	else if (cmd == ID_OPEN) g_app->OpenManager();
 	else if (cmd == ID_NONE) g_app->SetActiveTheme("");
 	else if (cmd >= ID_THEME && cmd < ID_THEME + g_menuThemes.size()) g_app->SetActiveTheme(g_menuThemes[cmd - ID_THEME].folder);
 	else if (cmd == ID_RESTART) RestartSteam();
@@ -144,6 +151,12 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 			g_toldRestart = true;
 			Balloon(L"Beyond Steam", L"Restart Steam once to turn Beyond Steam on. Right-click this icon and pick Restart Steam.");
 		}
+		static std::string toldUpdate;
+		json upd = g_app->UpdateInfo();
+		if (upd.is_object() && upd.value("version", "") != toldUpdate) {
+			toldUpdate = upd.value("version", "");
+			Balloon(L"Beyond Steam update", (L"Version " + Widen(toldUpdate) + L" is out. Right-click this icon to update, or use the Beyond Steam window in Steam.").c_str());
+		}
 		static bool toldMillennium = false;
 		if (g_app->GetStatus() == Status::MillenniumActive && !toldMillennium) {
 			toldMillennium = true;
@@ -162,7 +175,7 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
 	const std::wstring args = cmdLine ? cmdLine : L"";
 	if (args.find(L"--uninstall") != std::wstring::npos) return RunUninstall();
-	if (ShouldRunSetup()) return RunSetup();
+	if (ShouldRunSetup()) return RunSetup(args.find(L"--update") != std::wstring::npos);
 
 	HANDLE one = CreateMutexW(nullptr, TRUE, L"BeyondSteam.SingleInstance");
 	if (GetLastError() == ERROR_ALREADY_EXISTS) { // already running: opening it again shows the manager
@@ -193,6 +206,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdLine, int) {
 	SetTimer(g_wnd, 1, 1000, nullptr);
 
 	std::thread([] { g_app->ConnectionLoop(); }).detach();
+	std::thread([] { g_app->Housekeeping(); }).detach();
+	if (args.find(L"--updated") != std::wstring::npos)
+		Balloon(L"Beyond Steam is updated", (L"You're on version " + Widen(kVersion) + L".").c_str());
 	if (args.find(L"--welcome") != std::wstring::npos)
 		Balloon(L"Beyond Steam is ready", L"It waits here in the tray. Click this icon, or press Ctrl+Shift+B in Steam, to pick themes and redesigns.");
 

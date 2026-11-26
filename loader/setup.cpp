@@ -110,10 +110,18 @@ static void MakeShortcut(const fs::path& exe) {
 	CoUninitialize();
 }
 
-int RunSetup() {
+int RunSetup(bool silentUpdate) {
 	const fs::path steam = SteamDir();
 	std::error_code ec;
 	const bool update = fs::exists(InstalledExe(), ec);
+	if (silentUpdate && update) { // started by Beyond Steam itself to install a downloaded update
+		CloseRunning();
+		for (int i = 0; i < 20 && !CopyFileW(ThisExe().c_str(), InstalledExe().c_str(), FALSE); i++) Sleep(250);
+		HKEY k;
+		if (RegOpenKeyExW(HKEY_CURRENT_USER, kUninstallKey, 0, KEY_SET_VALUE, &k) == ERROR_SUCCESS) { SetString(k, L"DisplayVersion", Widen(kVersion)); RegCloseKey(k); }
+		ShellExecuteW(nullptr, L"open", InstalledExe().c_str(), L"--updated", nullptr, SW_SHOWNORMAL);
+		return 0;
+	}
 	std::wstring intro = update
 		? L"Update Beyond Steam to version " + Widen(kVersion) + L"?\n\nYour themes, redesigns and settings are kept."
 		: L"Install Beyond Steam?\n\nBeyond Steam adds themes and complete redesigns to Steam. It installs for your Windows account only (no administrator rights), "

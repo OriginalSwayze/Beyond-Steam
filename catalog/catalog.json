@@ -11,7 +11,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Afterglow",
                       "branch":  "main",
-                      "preview":  "previews/Afterglow.jpg"
+                      "preview":  "previews/Afterglow.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Afterglow/releases/latest/download/Afterglow.zip"
                   },
                   {
                       "id":  "Almanac",
@@ -22,7 +23,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Almanac",
                       "branch":  "main",
-                      "preview":  "previews/Almanac.jpg"
+                      "preview":  "previews/Almanac.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Almanac/releases/latest/download/Almanac.zip"
                   },
                   {
                       "id":  "Chitin",
@@ -33,7 +35,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Chitin",
                       "branch":  "main",
-                      "preview":  "previews/Chitin.jpg"
+                      "preview":  "previews/Chitin.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Chitin/releases/latest/download/Chitin.zip"
                   },
                   {
                       "id":  "Cipher",
@@ -44,7 +47,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Cipher",
                       "branch":  "main",
-                      "preview":  "previews/Cipher.jpg"
+                      "preview":  "previews/Cipher.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Cipher/releases/latest/download/Cipher.zip"
                   },
                   {
                       "id":  "CutPaste",
@@ -55,7 +59,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/CutPaste",
                       "branch":  "main",
-                      "preview":  "previews/CutPaste.jpg"
+                      "preview":  "previews/CutPaste.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/CutPaste/releases/latest/download/CutPaste.zip"
                   },
                   {
                       "id":  "Cybercafe",
@@ -66,7 +71,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Cybercafe",
                       "branch":  "main",
-                      "preview":  "previews/Cybercafe.jpg"
+                      "preview":  "previews/Cybercafe.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Cybercafe/releases/latest/download/Cybercafe.zip"
                   },
                   {
                       "id":  "Halcyon",
@@ -77,7 +83,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Halcyon",
                       "branch":  "main",
-                      "preview":  "previews/Halcyon.jpg"
+                      "preview":  "previews/Halcyon.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Halcyon/releases/latest/download/Halcyon.zip"
                   },
                   {
                       "id":  "Megacity",
@@ -88,7 +95,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Megacity",
                       "branch":  "main",
-                      "preview":  "previews/Megacity.jpg"
+                      "preview":  "previews/Megacity.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Megacity/releases/latest/download/Megacity.zip"
                   },
                   {
                       "id":  "Meridian",
@@ -99,7 +107,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Meridian",
                       "branch":  "main",
-                      "preview":  "previews/Meridian.jpg"
+                      "preview":  "previews/Meridian.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Meridian/releases/latest/download/Meridian.zip"
                   },
                   {
                       "id":  "Metro",
@@ -110,7 +119,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Metro",
                       "branch":  "main",
-                      "preview":  "previews/Metro.jpg"
+                      "preview":  "previews/Metro.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Metro/releases/latest/download/Metro.zip"
                   },
                   {
                       "id":  "Monsoon",
@@ -121,7 +131,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Monsoon",
                       "branch":  "main",
-                      "preview":  "previews/Monsoon.jpg"
+                      "preview":  "previews/Monsoon.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Monsoon/releases/latest/download/Monsoon.zip"
                   },
                   {
                       "id":  "NeonTokyo",
@@ -132,7 +143,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/NeonTokyo",
                       "branch":  "main",
-                      "preview":  "previews/NeonTokyo.jpg"
+                      "preview":  "previews/NeonTokyo.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/NeonTokyo/releases/latest/download/NeonTokyo.zip"
                   },
                   {
                       "id":  "Nexus",
@@ -143,7 +155,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Nexus",
                       "branch":  "main",
-                      "preview":  "previews/Nexus.jpg"
+                      "preview":  "previews/Nexus.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Nexus/releases/latest/download/Nexus.zip"
                   },
                   {
                       "id":  "Obsidian",
@@ -154,7 +167,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Obsidian",
                       "branch":  "main",
-                      "preview":  "previews/Obsidian.jpg"
+                      "preview":  "previews/Obsidian.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Obsidian/releases/latest/download/Obsidian.zip"
                   },
                   {
                       "id":  "Overdrive",
@@ -165,7 +179,8 @@
                       "version":  "1.1.0",
                       "repo":  "OriginalSwayze/Overdrive",
                       "branch":  "main",
-                      "preview":  "previews/Overdrive.jpg"
+                      "preview":  "previews/Overdrive.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Overdrive/releases/latest/download/Overdrive.zip"
                   },
                   {
                       "id":  "Phosphor",
@@ -176,7 +191,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Phosphor",
                       "branch":  "main",
-                      "preview":  "previews/Phosphor.jpg"
+                      "preview":  "previews/Phosphor.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Phosphor/releases/latest/download/Phosphor.zip"
                   },
                   {
                       "id":  "Reliquary",
@@ -187,7 +203,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Reliquary",
                       "branch":  "main",
-                      "preview":  "previews/Reliquary.jpg"
+                      "preview":  "previews/Reliquary.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Reliquary/releases/latest/download/Reliquary.zip"
                   },
                   {
                       "id":  "Sentinel",
@@ -198,7 +215,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Sentinel",
                       "branch":  "main",
-                      "preview":  "previews/Sentinel.jpg"
+                      "preview":  "previews/Sentinel.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Sentinel/releases/latest/download/Sentinel.zip"
                   },
                   {
                       "id":  "Shelter",
@@ -209,7 +227,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Shelter",
                       "branch":  "main",
-                      "preview":  "previews/Shelter.jpg"
+                      "preview":  "previews/Shelter.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Shelter/releases/latest/download/Shelter.zip"
                   },
                   {
                       "id":  "Silverbane",
@@ -220,7 +239,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Silverbane",
                       "branch":  "main",
-                      "preview":  "previews/Silverbane.jpg"
+                      "preview":  "previews/Silverbane.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Silverbane/releases/latest/download/Silverbane.zip"
                   },
                   {
                       "id":  "Zenith",
@@ -231,7 +251,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Zenith",
                       "branch":  "main",
-                      "preview":  "previews/Zenith.jpg"
+                      "preview":  "previews/Zenith.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Zenith/releases/latest/download/Zenith.zip"
                   },
                   {
                       "id":  "Kestrel",
@@ -242,7 +263,8 @@
                       "version":  "1.0.0",
                       "repo":  "OriginalSwayze/Playbox-Theme",
                       "branch":  "main",
-                      "preview":  "previews/Kestrel.jpg"
+                      "preview":  "previews/Kestrel.jpg",
+                      "zip":  "https://github.com/OriginalSwayze/Playbox-Theme/releases/latest/download/Playbox-Theme.zip"
                   },
                   {
                       "id":  "com.originalswayze.kestrel",
@@ -252,6 +274,7 @@
                       "version":  "1.1.0",
                       "description":  "163 complete interfaces for Steam in one box: game launchers, game-menu worlds and more, switchable from a button in every top strip.",
                       "zip":  "https://github.com/OriginalSwayze/Playbox/releases/latest/download/Playbox-BeyondSteam.zip",
+                      "repo":  "OriginalSwayze/Playbox",
                       "theme":  "Kestrel",
                       "preview":  "previews/playbox.png"
                   }
